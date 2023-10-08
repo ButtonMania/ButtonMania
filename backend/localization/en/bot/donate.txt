@@ -1,0 +1,14 @@
+🎉 Help us develop new features for ButtonMania by making a donation! 🎁💪
+
+💰 Your cryptocurrency donations are greatly appreciated! Here are our addresses:
+
+<b>- Ton:</b>
+%s
+
+<b>- Ethereum (ETH):</b>
+%s
+
+<b>- Monero (XMR):</b>
+%s
+
+🙌 Your support will fuel the fun and laughter in ButtonMania! Thank you for being awesome! 😊🚀

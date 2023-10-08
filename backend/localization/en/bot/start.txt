@@ -1,0 +1,9 @@
+<b>Welcome to ButtonMania, %s!</b>
+
+Get ready to unleash your button-pushing skills in an addictive and thrilling game that will put your patience to the test! 🕹️
+
+Press the button below to start the frenzy! Keep holding to beat the world record. Let's go for it! 💪
+
+Join us in developing new features and creating magic together! 🌟 Help us by using the /donate command.
+
+Thank you for joining us on this button-pushing adventure! Let's get started and see who can become the ultimate ButtonMania champion! 🚀

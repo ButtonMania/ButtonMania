@@ -1,0 +1,281 @@
+@keyframes pulsating {
+
+    from {
+        width: 16.875rem;
+        height: 16.875rem;
+    }
+
+    25% {
+        width: 15.625rem;
+        height: 15.625rem;
+    }
+
+    50% {
+        width: 16.225rem;
+        height: 16.225rem;
+    }
+
+    75% {
+        width: 15.625rem;
+        height: 15.625rem;
+    }
+
+    to {
+        width: 16.875rem;
+        height: 16.875rem;
+    }
+}
+
+@keyframes release {
+
+    from,
+    to {
+        transform: scale(1, 1);
+    }
+}
+
+.button {
+    position: relative;
+}
+
+.button,
+.wrapper,
+.arrows {
+    width: 23.75rem;
+    height: 23.75rem;
+}
+
+.wrapper,
+.arrows {
+    position: absolute;
+    top: 0;
+    left: 0;
+}
+
+.circles {
+    position: absolute;
+    pointer-events: none;
+    width: 22.5rem;
+    height: 22.5rem;
+    top: 50%;
+    left: 50%;
+    z-index: 0;
+    transform: translate(-50%, -50%);
+}
+
+.arrows {
+    z-index: 10;
+}
+
+.arrows>a {
+    position: absolute;
+    display: block;
+    height: 2.1875rem;
+    width: 2.1875rem;
+    top: 50%;
+}
+
+.arrows>a:first-child {
+    left: 0%;
+    transform: translate(0, -50%);
+}
+
+.arrows>a:last-child {
+    left: 100%;
+    transform: translate(-100%, -50%);
+}
+
+.wrapper {
+    z-index: 1000;
+    pointer-events: none;
+    display: block;
+}
+
+.push .arrows,
+.hold .arrows {
+    display: none;
+}
+
+.push .gradient,
+.hold .gradient {
+    animation: pulsating 2s infinite ease-in-out;
+}
+
+.release .gradient {
+    transition: all 0.1s ease-in-out;
+}
+
+.labels_wrapper {
+    width: 12.5rem;
+}
+
+.idle .circles,
+.idle .labels_wrapper {
+    visibility: hidden;
+}
+
+.push .labels_wrapper,
+.hold .labels_wrapper,
+.release .labels_wrapper {
+    visibility: visible;
+}
+
+.idle .animation,
+.release .animation {
+    width: 11.25rem;
+    height: 11.25rem;
+}
+
+.push .animation,
+.hold .animation,
+.release .animation {
+    width: 3.75rem;
+    height: 3.75rem;
+    transform: translate(-50%, -35%);
+    top: 78%;
+}
+
+.animation,
+.labels_wrapper {
+    display: block;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+}
+
+.push .animation,
+.push .labels_wrapper,
+.hold .animation,
+.hold .labels_wrapper,
+.release .animation,
+.release .labels_wrapper {
+    transition: top 0.2s;
+}
+
+.labels_wrapper .time,
+.labels_wrapper .label {
+    font-style: normal;
+    user-select: none;
+    display: block;
+}
+
+.release .labels_wrapper {
+    top: 46%;
+}
+
+.world_record .labels_wrapper {
+    top: 42% !important;
+}
+
+.push .time,
+.hold .time {
+    font-size: 2.0625rem;
+    font-weight: 700;
+    line-height: 2.375rem;
+    letter-spacing: 0.06188rem;
+    margin-bottom: 0px;
+}
+
+.push .label,
+.hold .label {
+    font-size: 1.25rem;
+    font-weight: 400;
+    line-height: 1.4375rem;
+    letter-spacing: 0.0375rem;
+}
+
+.release .time {
+    margin-bottom: 1.06rem;
+}
+
+.release .time,
+.release .label,
+.world_record .time,
+.world_record .label {
+    font-weight: 700;
+}
+
+.release .time,
+.release .label,
+.world_record .time {
+    font-size: 1.25rem;
+    line-height: 1.4375rem;
+    letter-spacing: 0.0375rem;
+}
+
+.world_record .label {
+    font-size: 1.625rem !important;
+    line-height: 2.0625rem !important;
+    letter-spacing: 0.0325rem !important;
+    text-transform: uppercase;
+}
+
+.gradient,
+.inner {
+    position: absolute;
+    display: inline-block;
+    overflow: hidden;
+    width: 16.875rem;
+    height: 16.875rem;
+    border-radius: 50%;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    flex-shrink: 0;
+}
+
+.inner {
+    z-index: 100;
+}
+
+.gradient {
+    z-index: 10;
+    text-indent: -99999px;
+    display: block;
+}
+
+.love .gradient {
+    background: linear-gradient(219deg, #FBFF45 14.88%, #FF7C7C 49.38%, #5F8BFF 85.35%);
+}
+
+.peace .gradient {
+    background: linear-gradient(219deg, #84E480 14.88%, #31DAFF 49.38%, #FF7CF2 85.35%);
+}
+
+.fortune .gradient {
+    background: linear-gradient(219deg, #57FF5E 14.88%, #FFDA1A 49.75%, #FF5757 85.35%);
+}
+
+.prestige .gradient {
+    background: linear-gradient(219deg, #00A3FF 14.88%, #00095B 40.2%, #5F8BFF 64.8%, #0D0033 85.35%);
+}
+
+.hold.love .gradient {
+    background: linear-gradient(219deg, #FAFF00 14.88%, #FF4545 49.38%, #3971FF 85.35%);
+}
+
+.hold.peace .gradient {
+    background: linear-gradient(219deg, #28F522 14.88%, #00D1FF 49.38%, #FF28EA 85.35%);
+}
+
+.hold.fortune .gradient {
+    background: linear-gradient(219deg, #00FF0A 14.88%, #FFD600 49.75%, #FF2121 85.35%);
+}
+
+.hold.prestige .gradient {
+    background: linear-gradient(219deg, #012FA8 14.88%, #0B012B 40.2%, #040168 64.8%, #0D0231 85.35%);
+}
+
+.release.prestige .arrows svg {
+    filter: invert(100%);
+}
+
+/* Lottie player bugfix */
+.animation svg {
+    display: none;
+}
+
+.animation svg:first-child {
+    display: block;
+}

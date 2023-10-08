@@ -1,0 +1,23 @@
+.counter {
+    width: 9.375rem;
+    margin: 0 auto;
+}
+
+.value,
+.label {
+    font-style: normal;
+}
+
+.value {
+    font-size: 1.75rem;
+    font-weight: 500;
+    line-height: 2.0625rem;
+    letter-spacing: 0.02625rem;
+}
+
+.label {
+    font-size: 0.9375rem;
+    font-weight: 400;
+    line-height: 1.125rem;
+    letter-spacing: 0.01406rem;
+}

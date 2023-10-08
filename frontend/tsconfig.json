@@ -1,0 +1,33 @@
+{
+	"compilerOptions": {
+		"target": "ESNext",
+		"module": "ESNext",
+		"moduleResolution": "Node",
+		"esModuleInterop": true,
+		"jsx": "react",
+		"jsxFactory": "h",
+		"jsxFragmentFactory": "Fragment",
+		"noEmit": true,
+		"allowJs": true,
+		"checkJs": true,
+		"skipLibCheck": true,
+		"resolveJsonModule": true,
+		"baseUrl": "./",
+		"paths": {
+			"react": [
+				"./node_modules/preact/compat"
+			],
+			"react-dom": [
+				"./node_modules/preact/compat"
+			]
+		},
+		"typeRoots": [
+			"./node_modules/@types",
+			"./node_modules/telegram-webapps-types-new"
+		]
+	},
+	"include": [
+		"src/**/*",
+		"preact.config.js"
+	]
+}

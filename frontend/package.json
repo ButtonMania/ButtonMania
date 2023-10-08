@@ -1,0 +1,60 @@
+{
+  "private": true,
+  "name": "buttonmania",
+  "version": "0.0.0",
+  "license": "MIT",
+  "scripts": {
+    "build": "cross-env NODE_OPTIONS=--openssl-legacy-provider preact build --no-prerender --prerenderUrls ./prerender-urls.json",
+    "dev": "cross-env NODE_OPTIONS=--openssl-legacy-provider preact watch --port 8888 --no-prerender --prerenderUrls ./prerender-urls-debug.json",
+    "serve": "sirv build --cors --single",
+    "lint": "eslint src",
+    "test": "jest"
+  },
+  "eslintConfig": {
+    "parser": "@typescript-eslint/parser",
+    "extends": [
+      "preact",
+      "plugin:@typescript-eslint/recommended"
+    ],
+    "ignorePatterns": [
+      "build/"
+    ]
+  },
+  "dependencies": {
+    "@lottiefiles/react-lottie-player": "^3.5.3",
+    "axios": "^1.5.1",
+    "class-transformer": "^0.5.1",
+    "gl-react": "^5.2.0",
+    "gl-react-dom": "^5.2.1",
+    "i18next": "^23.5.1",
+    "preact": "^10.10.0",
+    "preact-render-to-string": "^6.2.2",
+    "preact-router": "^4.1.2"
+  },
+  "devDependencies": {
+    "@twa-dev/types": "^6.9.0",
+    "@types/enzyme": "^3.10.12",
+    "@types/jest": "^29.5.5",
+    "@typescript-eslint/eslint-plugin": "^6.7.4",
+    "@typescript-eslint/parser": "^6.7.4",
+    "cross-env": "^7.0.3",
+    "enzyme": "^3.11.0",
+    "enzyme-adapter-preact-pure": "^4.0.1",
+    "eslint": "^8.20.0",
+    "eslint-config-preact": "^1.3.0",
+    "jest": "^29.7.0",
+    "jest-preset-preact": "^4.0.5",
+    "preact-cli": "^3.5.0",
+    "preact-cli-svg-loader": "^1.1.0",
+    "sirv-cli": "^2.0.2",
+    "typescript": "^5.2.2",
+    "webpack-glsl-loader": "^1.0.1"
+  },
+  "jest": {
+    "preset": "jest-preset-preact",
+    "setupFiles": [
+      "<rootDir>/tests/__mocks__/browserMocks.ts",
+      "<rootDir>/tests/__mocks__/setupTests.ts"
+    ]
+  }
+}
