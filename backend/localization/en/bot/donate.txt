@@ -3,12 +3,12 @@
 💰 Your cryptocurrency donations are greatly appreciated! Here are our addresses:
 
 <b>- Ton:</b>
-%s
+<code>%s</code>
 
 <b>- Ethereum (ETH):</b>
-%s
+<code>%s</code>
 
 <b>- Monero (XMR):</b>
-%s
+<code>%s</code>
 
 🙌 Your support will fuel the fun and laughter in ButtonMania! Thank you for being awesome! 😊🚀

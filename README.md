@@ -127,9 +127,9 @@ Feel free to open pull requests or issues!
 
 If you've enjoyed ButtonMania and would like to support the project, consider making a donation in cryptocurrency. Your contributions help cover hosting costs and other digital expenses. Here are our donation addresses:
 
-- **TON**: UQAaTJqQ4bqy6xxCUV-MSWMsJulwLAP1Dyma5TaA0aGwWiEe
-- **Ethereum/Binance (ETH/BNB)**: 0x0948A61328b3eCeDa37CC33907F30d4AC06C34Ed
-- **Monero (XMR)**: 48D2unYK1NhfzQusXnXsU6ZrXfPxfSXrKPwTxEknwJygeC6wTSBkWorbX55EYZbBMHZLdeG1GXL8N9Xs6KSFCdEQ5xgoTqg
+- **TON**: `UQAaTJqQ4bqy6xxCUV-MSWMsJulwLAP1Dyma5TaA0aGwWiEe`
+- **Ethereum/Binance (ETH/BNB)**: `0x0948A61328b3eCeDa37CC33907F30d4AC06C34Ed`
+- **Monero (XMR)**: `48D2unYK1NhfzQusXnXsU6ZrXfPxfSXrKPwTxEknwJygeC6wTSBkWorbX55EYZbBMHZLdeG1GXL8N9Xs6KSFCdEQ5xgoTqg`
 
 Your support helps keep this project alive! 😄  
 If you've profited from this code, please consider sending some crypto our way, or reach out to discuss collaboration. We have plenty of ideas and skills!  
