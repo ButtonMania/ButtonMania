@@ -76,8 +76,8 @@ func (db *DB) Close() error {
 	return db.client.Close()
 }
 
-// AddRecordToLeaderBoard adds a gameplay record to the leaderboard.
-func (db *DB) AddRecordToLeaderBoard(
+// AddRecordToLeaderboard adds a gameplay record to the leaderboard.
+func (db *DB) AddRecordToLeaderboard(
 	buttonType protocol.ButtonType,
 	userID protocol.UserID,
 	record protocol.GameplayRecord,
@@ -126,8 +126,8 @@ func (db *DB) AddRecordToLeaderBoard(
 	return nil
 }
 
-// GetDurationPlaceInLeaderBoard retrieves the duration place in the leaderboard.
-func (db *DB) GetDurationPlaceInLeaderBoard(
+// GetDurationPlaceInLeaderboard retrieves the duration place in the leaderboard.
+func (db *DB) GetDurationPlaceInLeaderboard(
 	buttonType protocol.ButtonType,
 	duration int64,
 ) (int64, error) {
@@ -164,8 +164,8 @@ func (db *DB) GetDurationPlaceInLeaderBoard(
 	return count + 1, errors.Join(zRangeErr, zCountErr)
 }
 
-// GetUserPlaceInLeaderBoard retrieves the user's place in the leaderboard.
-func (db *DB) GetUserPlaceInLeaderBoard(
+// GetUserPlaceInLeaderboard retrieves the user's place in the leaderboard.
+func (db *DB) GetUserPlaceInLeaderboard(
 	buttonType protocol.ButtonType,
 	userID protocol.UserID,
 ) (int64, error) {
@@ -180,8 +180,8 @@ func (db *DB) GetUserPlaceInLeaderBoard(
 	return count - rank, errors.Join(zCountErr, zRankErr)
 }
 
-// GetUsersCountInLeaderBoard retrieves the count of users in the leaderboard.
-func (db *DB) GetUsersCountInLeaderBoard(buttonType protocol.ButtonType) (int64, error) {
+// GetUsersCountInLeaderboard retrieves the count of users in the leaderboard.
+func (db *DB) GetUsersCountInLeaderboard(buttonType protocol.ButtonType) (int64, error) {
 	leaderboardKey := fmt.Sprintf(
 		"%s:%s:%s",
 		RedisKeyLeaderboard,

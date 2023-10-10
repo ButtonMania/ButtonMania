@@ -158,12 +158,12 @@ func (s *GameSession) gameplayRecord(
 	db := s.room.DB
 	btnType := s.room.ButtonType
 
-	place, err_ := db.GetDurationPlaceInLeaderBoard(btnType, gameplayRecord.Duration)
+	place, err_ := db.GetDurationPlaceInLeaderboard(btnType, gameplayRecord.Duration)
 	if err_ != nil {
 		err = errors.Join(err, err_)
 	}
 
-	count, err_ := db.GetUsersCountInLeaderBoard(btnType)
+	count, err_ := db.GetUsersCountInLeaderboard(btnType)
 	if err_ != nil {
 		err = errors.Join(err, err_)
 	}
@@ -271,7 +271,7 @@ func (s *GameSession) closeGameSession(
 	if gameplayCtx != nil {
 		record := protocol.NewGameplayRecord(*gameplayCtx)
 
-		if err_ := s.room.DB.AddRecordToLeaderBoard(buttonTime, s.userID, record); err_ != nil {
+		if err_ := s.room.DB.AddRecordToLeaderboard(buttonTime, s.userID, record); err_ != nil {
 			err = errors.Join(err, err_)
 		}
 
