@@ -1,3 +1,20 @@
+@keyframes slide {
+
+    from,
+    45% {
+        transform: translate(0, 0);
+    }
+
+    50%,
+    95% {
+        transform: translate(0, -50%);
+    }
+
+    to {
+        transform: translate(0, 0);
+    }
+}
+
 .header {
     display: grid;
     grid-template-columns: 1fr;
@@ -32,8 +49,25 @@
     /* padding-bottom: 0.69rem; */
 }
 
+.message_wrapper,
+.record_wrapper,
 .message {
     height: 2.625rem;
+}
+
+.message_wrapper {
+    position: relative;
+    overflow: hidden;
+}
+
+.message,
+.record_wrapper {
+    width: 100%;
+}
+
+.message_inner {
+    animation: slide 10s linear infinite;
+    transform: translate(0, 0);
 }
 
 .idle.love .type {
@@ -62,4 +96,12 @@
     background-clip: text;
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
+}
+
+.record_wrapper span {
+    display: block;
+}
+
+.record_wrapper span:last-child {
+    font-weight: 700;
 }

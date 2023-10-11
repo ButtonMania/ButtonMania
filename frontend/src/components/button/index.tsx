@@ -7,6 +7,7 @@ import ArrowRight from './arrow_right.svg';
 import Circles from './circles.svg';
 import CirclesRecord from './circles_record.svg';
 import { Player } from "@lottiefiles/react-lottie-player";
+import { secondsToHHMMSS } from '../../utils';
 import style from './style.css';
 
 interface Props {
@@ -89,14 +90,6 @@ export default class Button extends Component<Props, State> {
                 }, () => { resolve() });
             });
         })
-    }
-
-    secondsToHHMMSS(seconds: number): string {
-        const format: any = (value: number) => (value < 10 ? `0${value}` : value);
-        var hours: number = Math.floor(seconds / 3600);
-        var minutes: number = Math.floor((seconds - (hours * 3600)) / 60);
-        seconds %= 60;
-        return `${format(hours)}:${format(minutes)}:${format(seconds)}`;
     }
 
     holdTimeInSec(): number {
@@ -272,7 +265,7 @@ export default class Button extends Component<Props, State> {
                 <div class={style.wrapper}>
                     <div class={style.inner}>
                         <div class={style.labels_wrapper}>
-                            <span class={style.time}>{this.secondsToHHMMSS(this.context.holdDuration)}</span>
+                            <span class={style.time}>{secondsToHHMMSS(this.context.holdDuration)}</span>
                             <span class={style.label}>{this.context.buttonText}</span>
                         </div>
                         <div class={style.animation}>

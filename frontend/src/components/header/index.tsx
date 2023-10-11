@@ -2,6 +2,7 @@ import { ButtonPhase, ButtonType } from '../../protocol/enums';
 import { Component, h } from 'preact';
 
 import { AppContext } from '../context';
+import { secondsToHHMMSS } from '../../utils';
 import style from './style.css';
 
 export default class Header extends Component {
@@ -48,7 +49,15 @@ export default class Header extends Component {
         return (
             <header class={headerClasses.join(' ')}>
                 <h1 class={style.type}>{this.context.headerText}</h1>
-                <h6 class={style.message}>{this.context.messageText}</h6>
+                <div class={style.message_wrapper}>
+                    <div class={style.message_inner}>
+                        <h6 class={style.message}>{this.context.messageText}</h6>
+                        <div class={style.record_wrapper}>
+                            <span class={style.label}>{this.context.currentRecordText}</span>
+                            <span class={style.value}>{secondsToHHMMSS(this.context.currentRecordValue)}</span>
+                        </div>
+                    </div>
+                </div>
             </header>
         );
     }

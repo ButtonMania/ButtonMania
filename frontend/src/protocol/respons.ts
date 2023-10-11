@@ -35,5 +35,6 @@ export class ErrorResponse {
 
 export class RoomStats {
     constructor(public readonly countActive: number,
-        public readonly countLeaderboard: number) { }
+        public readonly countLeaderboard: number,
+        public readonly bestDuration: number) { }
 }

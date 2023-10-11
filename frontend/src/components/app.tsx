@@ -71,9 +71,11 @@ export default class App extends Component<Props, State> {
 			telegramUserID: userId,
 			isPremium: isPremium,
 			locale: locale,
-			messageText: i18next.t(`${buttonType}DefaultSubtitle`),
 			buttonPhase: buttonPhase,
 			buttonType: buttonType,
+			messageText: i18next.t(`${buttonType}DefaultSubtitle`),
+			currentRecordText: i18next.t('currentRecordHeaderText'),
+			currentRecordValue: 0,
 			placeActiveValue: 0,
 			placeLeaderboardValue: 0,
 			countActiveValue: 0,
@@ -213,6 +215,7 @@ export default class App extends Component<Props, State> {
 		this.setState({
 			countActiveValue: stats.countActive,
 			countLeaderboardValue: stats.countLeaderboard,
+			currentRecordValue: stats.bestDuration,
 		});
 		this.props.webApp.HapticFeedback.impactOccurred('soft')
 	}
