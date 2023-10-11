@@ -59,6 +59,11 @@ Motivational messages are sent by the server to the client at various frequencie
 The Telegram bot subroutine contains two commands: `/start`, which displays a message and a button to start the app, and `/donate`, which displays a message and cryptocurrency addresses for donations. All messages are localizable and stored in `./backend/<locale>/bot/<command>.txt` files.
 
 
+## Localization
+
+ButtonMania supports multiple languages, including English and Russian. Motivational messages are generated on the server side and are located at `./backend/localization/<locale>/messages/<button_type>.txt` files. UI strings are managed on the client side and are located at `./fronted/src/locales/<locale>.json`. 🌍  
+
+
 ## Game Logic
 
 ![ButtonMania](https://github.com/ButtonMania/ButtonMania/raw/main/frontend/src/assets/meme.gif "ButtonMania")
@@ -105,12 +110,6 @@ Here's a list of CLI parameters and corresponding environment variables that you
 - `CORS_ORIGINS`: Accepts glob patterns and controls allowed CORS origins.  
 
 In debug mode (GIN_MODE=debug), the server accepts requests from all origins, but in release mode (GIN_MODE=release), it only allows hosts listed in CORS_ORIGINS.  
-
-
-## Localization
-
-ButtonMania supports multiple languages, including English and Russian. Motivational messages are generated on the server side and are located at `./backend/localization/<locale>/messages/<button_type>.txt` files. UI strings are managed on the client side and are located at `./fronted/src/locales/<locale>.json`. 🌍  
-
 
 ## Contributing
 
