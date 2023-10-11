@@ -218,6 +218,21 @@ func (db *DB) GetUsersCountInActiveSessions(buttonType protocol.ButtonType) (int
 	return db.client.ZCount(db.ctx, activeSessionsKey, "-inf", "+inf").Result()
 }
 
+// GetBestDurationInLeaderboard retrieves the best duration achieved by a player in the leaderboard.
+func (db *DB) GetBestDurationInLeaderboard(buttonType protocol.ButtonType) (int64, error) {
+	leaderboardKey := fmt.Sprintf(
+		"%s:%s:%s",
+		RedisKeyLeaderboard,
+		RedisKeyPredefined,
+		buttonType,
+	)
+	rng, err := db.client.ZRangeWithScores(db.ctx, leaderboardKey, -1, -1).Result()
+	if len(rng) == 0 || err != nil {
+		return 0, err
+	}
+	return int64(rng[0].Score), nil
+}
+
 // SetUserDurationToActiveSessions sets the user's duration in active sessions.
 func (db *DB) SetUserDurationToActiveSessions(
 	buttonType protocol.ButtonType,

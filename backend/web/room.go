@@ -46,7 +46,12 @@ func (r *GameRoom) Stats() (protocol.GameRoomStats, error) {
 		err = errors.Join(err, err_)
 	}
 
-	return protocol.NewGameRoomStats(&countActive, &countLeaderboard), err
+	bestDuration, err_ := r.DB.GetBestDurationInLeaderboard(r.ButtonType)
+	if err_ != nil {
+		err = errors.Join(err, err_)
+	}
+
+	return protocol.NewGameRoomStats(&countActive, &countLeaderboard, &bestDuration), err
 }
 
 // HasGameSession checks if a game session exists for a user.

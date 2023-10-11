@@ -90,13 +90,19 @@ func (r GameplayRecord) MarshalBinary() ([]byte, error) {
 type GameRoomStats struct {
 	CountActive      *int64 `json:"countActive,omitempty"`
 	CountLeaderboard *int64 `json:"countLeaderboard,omitempty"`
+	BestDuration     *int64 `json:"bestDuration,omitempty"`
 }
 
 // NewGameRoomStats creates a new GameRoomStats.
-func NewGameRoomStats(totalCountActive, totalCountLeaderboard *int64) GameRoomStats {
+func NewGameRoomStats(
+	totalCountActive,
+	totalCountLeaderboard,
+	bestDuration *int64,
+) GameRoomStats {
 	return GameRoomStats{
 		CountActive:      totalCountActive,
 		CountLeaderboard: totalCountLeaderboard,
+		BestDuration:     bestDuration,
 	}
 }
 
