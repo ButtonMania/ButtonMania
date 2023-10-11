@@ -29,7 +29,7 @@ Please note that there are two parameters (`TG_APP_URL` and `TG_BOT_TOKEN`) that
 
 ```sh
 git clone https://github.com/ButtonMania/ButtonMania.git
-cd button-mania
+cd ButtonMania
 ```
 
 2. Build and run the Docker containers:
