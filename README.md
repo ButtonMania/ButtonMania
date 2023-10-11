@@ -82,22 +82,22 @@ For the frontend, you can use the following CLI commands:
 Here's a list of CLI parameters and corresponding environment variables that you can use as fallback:
 
 - `redisaddress`: Redis server address (Required). Env: `REDIS_ADDRESS`
-- `redisUsername`: Redis server username. Env: `REDIS_USERNAME`
-- `redisPassword`: Redis server password. Env: `REDIS_PASSWORD`
-- `redisDatabase`: Redis server database number. Env: `REDIS_DB`
-- `redisTLS`: Redis server TLS connection. Env: `REDIS_TLS`
-- `staticPath`: Static assets folder path (Required). Env: `STATIC_PATH`
-- `sessionName`: Server session name. Env: `SESSION_NAME`
-- `sessionSecret`: Server session secret phrase. Env: `SESSION_SECRET`
-- `serverPort`: Server port. Env: `SERVER_PORT`
-- `allowedOrigins`: Allowed CORS origins. Env: `CORS_ORIGINS`
-- `tgAppURL`: Telegram app URL (Required). Env: `TG_APP_URL`
-- `tgToken`: Telegram bot token (Required). Env: `TG_BOT_TOKEN`
-- `tgWebhook`: Telegram webhook URL (if not provided, long polling will be used). Env: `TG_WEBHOOK_URL`
-- `tgWebhookPort`: Telegram webhook listen port. Env: `TG_WEBHOOK_PORT`
-- `tgDonateTon`: TON address for Telegram bot donation feature. Env: `TG_DONATION_TON`
-- `tgDonateEth`: Ethereum address for Telegram bot donation feature. Env: `TG_DONATION_ETH`
-- `tgDonateXmr`: Monero address for Telegram bot donation feature. Env: `TG_DONATION_XMR`
+- `redisusername`: Redis server username. Env: `REDIS_USERNAME`
+- `redispassword`: Redis server password. Env: `REDIS_PASSWORD`
+- `redisdatabase`: Redis server database number. Env: `REDIS_DB`
+- `redistls`: Redis server TLS connection. Env: `REDIS_TLS`
+- `staticpath`: Static assets folder path (Required). Env: `STATIC_PATH`
+- `sessionname`: Server session name. Env: `SESSION_NAME`
+- `sessionsecret`: Server session secret phrase. Env: `SESSION_SECRET`
+- `serverport`: Server port. Env: `SERVER_PORT`
+- `allowedorigins`: Allowed CORS origins. Env: `CORS_ORIGINS`
+- `telegramappurl`: Telegram app URL (Required). Env: `TG_APP_URL`
+- `telegramtoken`: Telegram bot token (Required). Env: `TG_BOT_TOKEN`
+- `telegramwebhook`: Telegram webhook URL (if not provided, long polling will be used). Env: `TG_WEBHOOK_URL`
+- `telegramwhport`: Telegram webhook listen port. Env: `TG_WEBHOOK_PORT`
+- `telegramdonateton`: TON address for Telegram bot donation feature. Env: `TG_DONATION_TON`
+- `telegramdonateeth`: Ethereum address for Telegram bot donation feature. Env: `TG_DONATION_ETH`
+- `telegramdonatexmr`: Monero address for Telegram bot donation feature. Env: `TG_DONATION_XMR`
 
 **Important Environment Variables:**
 
