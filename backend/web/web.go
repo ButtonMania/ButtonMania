@@ -30,6 +30,8 @@ const (
 	KeySessionSecret  ContextKey = "sessionsecret"
 	KeyStaticPath     ContextKey = "staticpath"
 	KeyServerPort     ContextKey = "serverport"
+	KeyServerTLSCert  ContextKey = "servertlscert"
+	KeyServerTLSKey   ContextKey = "servertlskey"
 	KeyAllowedOrigins ContextKey = "allowedorigins"
 )
 
@@ -43,14 +45,13 @@ type Web struct {
 }
 
 // NewWeb creates a new Web instance.
-func NewWeb(ctx context.Context, db *db.DB, debug bool) (*Web, error) {
+func NewWeb(ctx context.Context, engine *gin.Engine, db *db.DB, debug bool) (*Web, error) {
 	sessionName := ctx.Value(KeySessionName).(string)
 	staticPath := ctx.Value(KeyStaticPath).(string)
 	sessionSecret := ctx.Value(KeySessionSecret).(string)
 	allowedOrigins := ctx.Value(KeyAllowedOrigins).(string)
 
 	// Initialize router, session storage
-	router := gin.Default()
 	store := cookie.NewStore([]byte(sessionSecret))
 	rooms := make(map[protocol.ButtonType]*GameRoom)
 
@@ -91,16 +92,16 @@ func NewWeb(ctx context.Context, db *db.DB, debug bool) (*Web, error) {
 	}
 
 	// Apply middlewares and other router parameters
-	router.SetTrustedProxies(nil)
-	router.Use(gzip.Gzip(gzip.DefaultCompression))
-	router.Use(cors.New(corsConfig))
-	router.Use(sessions.Sessions(sessionName, store))
-	router.Use(static.Serve("/", static.LocalFile(staticPath, true)))
+	engine.SetTrustedProxies(nil)
+	engine.Use(gzip.Gzip(gzip.DefaultCompression))
+	engine.Use(cors.New(corsConfig))
+	engine.Use(sessions.Sessions(sessionName, store))
+	engine.Use(static.Serve("/", static.LocalFile(staticPath, true)))
 
 	return &Web{
 		ctx:      ctx,
 		db:       db,
-		engine:   router,
+		engine:   engine,
 		store:    store,
 		upgrader: upgrader,
 		rooms:    rooms,
@@ -178,7 +179,18 @@ func (w *Web) statsEndpoint(c *gin.Context) {
 // Run starts the web server.
 func (w *Web) Run() error {
 	serverPort := w.ctx.Value(KeyServerPort).(int)
+	serverTLSCert := w.ctx.Value(KeyServerTLSCert).(string)
+	serverTLSKey := w.ctx.Value(KeyServerTLSKey).(string)
+
 	w.engine.GET("/ws", w.wsEndpoint)
 	w.engine.GET("/api/stats", w.statsEndpoint)
+
+	if len(serverTLSCert) > 0 && len(serverTLSKey) > 0 {
+		return w.engine.RunTLS(
+			":"+strconv.Itoa(serverPort),
+			serverTLSCert,
+			serverTLSKey,
+		)
+	}
 	return w.engine.Run(":" + strconv.Itoa(serverPort))
 }

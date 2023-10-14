@@ -95,11 +95,12 @@ Here's a list of CLI parameters and corresponding environment variables that you
 - `sessionname`: Server session name. Env: `SESSION_NAME`
 - `sessionsecret`: Server session secret phrase. Env: `SESSION_SECRET`
 - `serverport`: Server port. Env: `SERVER_PORT`
+- `servertlscert`: Server TLS certificate file. Env: `SERVER_TLS_CERT`
+- `servertlskey`: Server TLS key file. Env: `SERVER_TLS_KEY`
 - `allowedorigins`: Allowed CORS origins. Env: `CORS_ORIGINS`
 - `telegramappurl`: Telegram app URL (Required). Env: `TG_APP_URL`
 - `telegramtoken`: Telegram bot token (Required). Env: `TG_BOT_TOKEN`
 - `telegramwebhook`: Telegram webhook URL (if not provided, long polling will be used). Env: `TG_WEBHOOK_URL`
-- `telegramwhport`: Telegram webhook listen port. Env: `TG_WEBHOOK_PORT`
 - `telegramdonateton`: TON address for Telegram bot donation feature. Env: `TG_DONATION_TON`
 - `telegramdonateeth`: Ethereum address for Telegram bot donation feature. Env: `TG_DONATION_ETH`
 - `telegramdonatexmr`: Monero address for Telegram bot donation feature. Env: `TG_DONATION_XMR`
@@ -107,9 +108,8 @@ Here's a list of CLI parameters and corresponding environment variables that you
 **Important Environment Variables:**
 
 - `GIN_MODE`: Controls the debug mode of the server.  
-- `CORS_ORIGINS`: Accepts glob patterns and controls allowed CORS origins.  
-
-In debug mode (GIN_MODE=debug), the server accepts requests from all origins, but in release mode (GIN_MODE=release), it only allows hosts listed in CORS_ORIGINS.  
+- `CORS_ORIGINS`: Accepts glob patterns and controls allowed CORS origins. In debug mode (`GIN_MODE`=debug), the server accepts requests from all origins, but in release mode (`GIN_MODE`=release), it only allows hosts listed in `CORS_ORIGINS`.  
+- `TG_WEBHOOK_URL`: The `telegramwebhook` CLI parameter (environment variable: `TG_WEBHOOK_URL`) determines the bot's mode. If this parameter is not provided the bot subroutine will start in long polling mode.  
 
 ## Contributing
 

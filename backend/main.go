@@ -24,11 +24,12 @@ var (
 	sessionName    = kingpin.Flag("sessionname", "Server session name.").Envar("SESSION_NAME").Default("session").String()
 	sessionSecret  = kingpin.Flag("sessionsecret", "Server session secret phrase.").Envar("SESSION_SECRET").Default("secret").String()
 	serverPort     = kingpin.Flag("serverport", "Server port.").Envar("SERVER_PORT").Default("8080").Int()
+	serverTLSCert  = kingpin.Flag("servertlscert", "Server tls cert file.").Envar("SERVER_TLS_CERT").String()
+	serverTLSKey   = kingpin.Flag("servertlskey", "Server tls key file.").Envar("SERVER_TLS_KEY").String()
 	allowedOrigins = kingpin.Flag("allowedorigins", "Allowed CORS origins.").Envar("CORS_ORIGINS").Default("*").String()
 	tgAppURL       = kingpin.Flag("telegramappurl", "Telegram app url.").Envar("TG_APP_URL").Required().String()
 	tgToken        = kingpin.Flag("telegramtoken", "Telegram bot token.").Envar("TG_BOT_TOKEN").Required().String()
 	tgWebhook      = kingpin.Flag("telegramwebhook", "Telegram webhook url.").Envar("TG_WEBHOOK_URL").Default("").String()
-	tgWebhookPort  = kingpin.Flag("telegramwhport", "Telegram webhook listen port.").Envar("TG_WEBHOOK_PORT").Default("8080").Int()
 	tgDonateTon    = kingpin.Flag("telegramdonateton", "TON address for Telegram bot donation feature.").Envar("TG_DONATION_TON").Default("").String()
 	tgDonateEth    = kingpin.Flag("telegramdonateeth", "Ethereum address for Telegram bot donation feature.").Envar("TG_DONATION_ETH").Default("").String()
 	tgDonateXmr    = kingpin.Flag("telegramdonatexmr", "Monero address for Telegram bot donation feature.").Envar("TG_DONATION_XMR").Default("").String()
@@ -45,11 +46,12 @@ func setupContext() context.Context {
 	ctx = context.WithValue(ctx, web.KeySessionName, *sessionName)
 	ctx = context.WithValue(ctx, web.KeyStaticPath, *staticPath)
 	ctx = context.WithValue(ctx, web.KeyServerPort, *serverPort)
+	ctx = context.WithValue(ctx, web.KeyServerTLSCert, *serverTLSCert)
+	ctx = context.WithValue(ctx, web.KeyServerTLSKey, *serverTLSKey)
 	ctx = context.WithValue(ctx, web.KeyAllowedOrigins, *allowedOrigins)
 	ctx = context.WithValue(ctx, bot.KeyTelegramAppUrl, *tgAppURL)
 	ctx = context.WithValue(ctx, bot.KeyTelegramToken, *tgToken)
 	ctx = context.WithValue(ctx, bot.KeyTelegramWebhook, *tgWebhook)
-	ctx = context.WithValue(ctx, bot.KeyTelegramWhPork, *tgWebhookPort)
 	ctx = context.WithValue(ctx, bot.KeyTelegramDonateTonAddress, *tgDonateTon)
 	ctx = context.WithValue(ctx, bot.KeyTelegramDonateEthAddress, *tgDonateEth)
 	ctx = context.WithValue(ctx, bot.KeyTelegramDonateXmrAddress, *tgDonateXmr)
@@ -66,6 +68,7 @@ func main() {
 
 	// Initialize context
 	ctx := setupContext()
+	engine := gin.Default()
 	debug := gin.Mode() == gin.DebugMode
 
 	// Initialize and check errors for each component
@@ -75,14 +78,14 @@ func main() {
 	}
 	defer db.Close()
 
-	web, err := web.NewWeb(ctx, db, debug)
-	if err != nil {
-		log.Fatalf("Failed to initialize web: %v", err)
-	}
-
-	bot, err := bot.NewBot(ctx, db, debug)
+	bot, err := bot.NewBot(ctx, engine, db, debug)
 	if err != nil {
 		log.Fatalf("Failed to initialize bot: %v", err)
+	}
+
+	web, err := web.NewWeb(ctx, engine, db, debug)
+	if err != nil {
+		log.Fatalf("Failed to initialize web: %v", err)
 	}
 
 	// Start the web and bot components

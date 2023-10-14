@@ -2,13 +2,13 @@ package bot
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"net/url"
 
 	"buttonmania.win/db"
 	"buttonmania.win/localization"
 	"buttonmania.win/protocol"
+	"github.com/gin-gonic/gin"
 	"github.com/mymmrac/telego"
 	"github.com/mymmrac/telego/telegohandler"
 	"github.com/mymmrac/telego/telegoutil"
@@ -22,7 +22,6 @@ const (
 	KeyTelegramToken   ContextKey = ContextKey("telegramtoken")
 	KeyTelegramAppUrl  ContextKey = ContextKey("telegramappurl")
 	KeyTelegramWebhook ContextKey = ContextKey("telegramwebhook")
-	KeyTelegramWhPork  ContextKey = ContextKey("telegramwhport")
 	// Context keys for donation cryptocurrency addresses
 	KeyTelegramDonateTonAddress ContextKey = ContextKey("telegramdonateton")
 	KeyTelegramDonateEthAddress ContextKey = ContextKey("telegramdonateeth")
@@ -31,14 +30,15 @@ const (
 
 // Bot represents a Telegram bot.
 type Bot struct {
-	ctx context.Context
-	db  *db.DB
-	bot *telego.Bot
-	loc *localization.BotLocalization
+	ctx    context.Context
+	db     *db.DB
+	engine *gin.Engine
+	bot    *telego.Bot
+	loc    *localization.BotLocalization
 }
 
 // NewBot creates a new instance of Bot.
-func NewBot(ctx context.Context, db *db.DB, debug bool) (*Bot, error) {
+func NewBot(ctx context.Context, engine *gin.Engine, db *db.DB, debug bool) (*Bot, error) {
 	var options telego.BotOption
 	if debug {
 		options = telego.WithDefaultDebugLogger()
@@ -58,10 +58,11 @@ func NewBot(ctx context.Context, db *db.DB, debug bool) (*Bot, error) {
 	}
 
 	return &Bot{
-		ctx: ctx,
-		db:  db,
-		bot: bot,
-		loc: loc,
+		ctx:    ctx,
+		db:     db,
+		engine: engine,
+		bot:    bot,
+		loc:    loc,
 	}, nil
 }
 
@@ -126,7 +127,7 @@ func (b *Bot) RunWithUpdates(updates <-chan telego.Update) error {
 }
 
 // RunWithWebhook starts the bot using a webhook.
-func (b *Bot) RunWithWebhook(webhookUrl string, webhookPort int) error {
+func (b *Bot) RunWithWebhook(webhookUrl string) error {
 	bot := b.bot
 	token := bot.Token()
 
@@ -148,13 +149,17 @@ func (b *Bot) RunWithWebhook(webhookUrl string, webhookPort int) error {
 		return err
 	}
 
-	updates, err := bot.UpdatesViaWebhook(u.Path + token)
+	webhookOpts := telego.WithWebhookServer(&GinWebhookServer{
+		Server: b.engine,
+	})
+
+	updates, err := bot.UpdatesViaWebhook(u.Path+token, webhookOpts)
 	if err != nil {
 		return err
 	}
 
 	go func() {
-		_ = bot.StartWebhook(fmt.Sprintf(":%d", webhookPort))
+		_ = bot.StartWebhook("")
 	}()
 
 	defer func() {
@@ -185,9 +190,8 @@ func (b *Bot) RunWithLongPolling() error {
 // Run starts the bot using the appropriate method (webhook or long polling).
 func (b *Bot) Run() error {
 	telegramWebhook := b.ctx.Value(KeyTelegramWebhook).(string)
-	telegramWhPork := b.ctx.Value(KeyTelegramWhPork).(int)
 	if len(telegramWebhook) > 0 {
-		return b.RunWithWebhook(telegramWebhook, telegramWhPork)
+		return b.RunWithWebhook(telegramWebhook)
 	} else {
 		return b.RunWithLongPolling()
 	}
