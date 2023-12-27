@@ -4,6 +4,7 @@ import { Component, ComponentChild, h } from 'preact';
 import { ConnectEvent, DisconnectEvent } from '../protocol/internal';
 import { ErrorResponse, RecordResponse, RoomStats, UpdateResponse } from '../protocol/respons';
 import { Platforms, WebApp, WebAppInitData } from "@twa-dev/types";
+import { enumIndex, randomEnum } from '../utils';
 
 import Button from './button';
 import { Config } from '../config';
@@ -50,8 +51,6 @@ export default class App extends Component<Props, State> {
 			return;
 		}
 		let tgData: WebAppInitData = this.props.webApp.initDataUnsafe;
-		let buttonType: ButtonType = ButtonType.Love;
-		let buttonPhase: ButtonPhase = ButtonPhase.Idle;
 		var locale: UserLocale = UserLocale.EN;
 		var userId: number = this.props.debug ? 0 : NaN;
 		var isPremium: boolean = false;
@@ -61,6 +60,9 @@ export default class App extends Component<Props, State> {
 			userId = tgData.user.id;
 			isPremium = tgData.user.is_premium;
 		}
+		// Set initial button type and state
+		let buttonType: ButtonType = randomEnum(ButtonType, enumIndex(ButtonType, isPremium ? ButtonType.Prestige : ButtonType.Fortune));
+		let buttonPhase: ButtonPhase = ButtonPhase.Idle;
 		// Fetch initial room stats, update locale and adjust font size
 		this.client.fetchRoomStats(buttonType);
 		this.adjustBaseFontSize(this.props.webApp.platform);
