@@ -7,6 +7,7 @@ import (
 
 type ButtonType string
 type ButtonPhase string
+type ClientID string
 type UserLocale string
 type UserID string
 type MessageType int

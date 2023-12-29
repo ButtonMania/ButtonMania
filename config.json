@@ -1,0 +1,12 @@
+{
+	"clients": [
+		{
+			"clientId": "buttonmania",
+			"rooms": ["peace", "love", "fortune", "prestige"]
+		},
+		{
+			"clientId": "threesixteen",
+			"rooms": []
+		}
+	]
+}

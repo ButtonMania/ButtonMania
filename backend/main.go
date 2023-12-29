@@ -8,10 +8,12 @@ import (
 	"syscall"
 
 	"buttonmania.win/bot"
+	"buttonmania.win/conf"
 	"buttonmania.win/db"
 	"buttonmania.win/web"
 	"github.com/alecthomas/kingpin"
 	"github.com/gin-gonic/gin"
+	"github.com/gookit/config/v2"
 )
 
 var (
@@ -20,6 +22,7 @@ var (
 	redisPassword  = kingpin.Flag("redispassword", "Redis server password.").Envar("REDIS_PASSWORD").Default("").String()
 	redisDatabase  = kingpin.Flag("redisdatabase", "Redis server database number.").Envar("REDIS_DB").Default("0").Int()
 	redisTLS       = kingpin.Flag("redistls", "Redis server tls connection.").Envar("REDIS_TLS").Default("0").Bool()
+	configPath     = kingpin.Flag("configpath", "Config file path.").Envar("CONFIG_PATH").Required().String()
 	staticPath     = kingpin.Flag("staticpath", "Static assets folder path.").Envar("STATIC_PATH").Required().String()
 	sessionName    = kingpin.Flag("sessionname", "Server session name.").Envar("SESSION_NAME").Default("session").String()
 	sessionSecret  = kingpin.Flag("sessionsecret", "Server session secret phrase.").Envar("SESSION_SECRET").Default("secret").String()
@@ -65,6 +68,19 @@ func main() {
 			log.Fatalf("Panic: %v", r)
 		}
 	}()
+
+	// Load config file
+	err := config.LoadFiles(*configPath)
+	if err != nil {
+		log.Fatalf("Failed to load config file: %v", err)
+	}
+
+	// Bind config struct
+	conf := conf.Conf{}
+	err = config.Decode(&conf)
+	if err != nil {
+		log.Fatalf("Failed to bind config struct: %v", err)
+	}
 
 	// Initialize context
 	ctx := setupContext()
