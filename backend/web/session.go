@@ -52,7 +52,8 @@ func NewGameSession(
 
 // validateGameSessionUpdate validates a game session update.
 func (s *GameSession) validateGameSessionUpdate(
-	gameplayCtx, GameplayMessageCtx *protocol.GameplayContext,
+	gameplayCtx *protocol.GameplayContext,
+	GameplayMessageCtx *protocol.GameplayContext,
 ) error {
 	if gameplayCtx.Timestamp != nil && GameplayMessageCtx.Timestamp != nil &&
 		*gameplayCtx.Timestamp != *GameplayMessageCtx.Timestamp {
@@ -100,7 +101,6 @@ func (s *GameSession) gameplayUpdate(
 	gameplayCtx *protocol.GameplayContext,
 	ws *websocket.Conn,
 ) protocol.GameplayMessage {
-	var err error
 	var msg *string
 	var placeInActiveSessionsPtr *int64
 	var placeInLeaderboardPtr *int64
@@ -116,15 +116,8 @@ func (s *GameSession) gameplayUpdate(
 		s.lastMsgTime = time.Now().Unix()
 	}
 
-	place, err_ := db.GetUserPlaceInActiveSessions(btnType, s.userID)
-	if err_ != nil {
-		err = errors.Join(err, err_)
-	}
-
-	count, err_ := db.GetUsersCountInActiveSessions(btnType)
-	if err_ != nil {
-		err = errors.Join(err, err_)
-	}
+	place, _ := db.GetUserPlaceInActiveSessions(btnType, s.userID)
+	count, _ := db.GetUsersCountInActiveSessions(btnType)
 
 	placeInActiveSessionsPtr = &place
 	countInActiveSessionsPtr = &count
@@ -148,7 +141,6 @@ func (s *GameSession) gameplayRecord(
 	gameplayRecord *protocol.GameplayRecord,
 	ws *websocket.Conn,
 ) protocol.GameplayMessage {
-	var err error
 	var placeInActiveSessionsPtr *int64
 	var placeInLeaderboardPtr *int64
 	var countInActiveSessionsPtr *int64
@@ -158,15 +150,8 @@ func (s *GameSession) gameplayRecord(
 	db := s.room.DB
 	btnType := s.room.ButtonType
 
-	place, err_ := db.GetDurationPlaceInLeaderboard(btnType, gameplayRecord.Duration)
-	if err_ != nil {
-		err = errors.Join(err, err_)
-	}
-
-	count, err_ := db.GetUsersCountInLeaderboard(btnType)
-	if err_ != nil {
-		err = errors.Join(err, err_)
-	}
+	place, _ := db.GetDurationPlaceInLeaderboard(btnType, gameplayRecord.Duration)
+	count, _ := db.GetUsersCountInLeaderboard(btnType)
 
 	worldRecord := place == 1
 	worldRecordPtr = &worldRecord
@@ -227,7 +212,8 @@ func (s *GameSession) writeNetworkMessage(
 
 // updateGameSession updates the game session state.
 func (s *GameSession) updateGameSession(
-	gameplayCtx, GameplayMessageCtx *protocol.GameplayContext,
+	gameplayCtx *protocol.GameplayContext,
+	GameplayMessageCtx *protocol.GameplayContext,
 	ws *websocket.Conn,
 ) (*protocol.GameplayContext, error) {
 	var err error

@@ -38,28 +38,6 @@ var (
 	tgDonateXmr    = kingpin.Flag("telegramdonatexmr", "Monero address for Telegram bot donation feature.").Envar("TG_DONATION_XMR").Default("").String()
 )
 
-func setupContext() context.Context {
-	ctx := context.TODO()
-	ctx = context.WithValue(ctx, db.KeyRedisAddress, *redisAddress)
-	ctx = context.WithValue(ctx, db.KeyRedisUsername, *redisUsername)
-	ctx = context.WithValue(ctx, db.KeyRedisPassword, *redisPassword)
-	ctx = context.WithValue(ctx, db.KeyRedisDatabase, *redisDatabase)
-	ctx = context.WithValue(ctx, db.KeyRedisTLS, *redisTLS)
-	ctx = context.WithValue(ctx, web.KeySessionSecret, *sessionSecret)
-	ctx = context.WithValue(ctx, web.KeySessionName, *sessionName)
-	ctx = context.WithValue(ctx, web.KeyStaticPath, *staticPath)
-	ctx = context.WithValue(ctx, web.KeyServerPort, *serverPort)
-	ctx = context.WithValue(ctx, web.KeyServerTLSCert, *serverTLSCert)
-	ctx = context.WithValue(ctx, web.KeyServerTLSKey, *serverTLSKey)
-	ctx = context.WithValue(ctx, web.KeyAllowedOrigins, *allowedOrigins)
-	ctx = context.WithValue(ctx, bot.KeyTelegramAppUrl, *tgAppURL)
-	ctx = context.WithValue(ctx, bot.KeyTelegramToken, *tgToken)
-	ctx = context.WithValue(ctx, bot.KeyTelegramWebhook, *tgWebhook)
-	ctx = context.WithValue(ctx, bot.KeyTelegramDonateTonAddress, *tgDonateTon)
-	ctx = context.WithValue(ctx, bot.KeyTelegramDonateEthAddress, *tgDonateEth)
-	ctx = context.WithValue(ctx, bot.KeyTelegramDonateXmrAddress, *tgDonateXmr)
-	return ctx
-}
 func main() {
 	kingpin.Version("0.0.1")
 	kingpin.Parse()
@@ -110,6 +88,29 @@ func main() {
 
 	// Handle CTRL-C
 	sigIntHandler()
+}
+
+func setupContext() context.Context {
+	ctx := context.TODO()
+	ctx = context.WithValue(ctx, db.KeyRedisAddress, *redisAddress)
+	ctx = context.WithValue(ctx, db.KeyRedisUsername, *redisUsername)
+	ctx = context.WithValue(ctx, db.KeyRedisPassword, *redisPassword)
+	ctx = context.WithValue(ctx, db.KeyRedisDatabase, *redisDatabase)
+	ctx = context.WithValue(ctx, db.KeyRedisTLS, *redisTLS)
+	ctx = context.WithValue(ctx, web.KeySessionSecret, *sessionSecret)
+	ctx = context.WithValue(ctx, web.KeySessionName, *sessionName)
+	ctx = context.WithValue(ctx, web.KeyStaticPath, *staticPath)
+	ctx = context.WithValue(ctx, web.KeyServerPort, *serverPort)
+	ctx = context.WithValue(ctx, web.KeyServerTLSCert, *serverTLSCert)
+	ctx = context.WithValue(ctx, web.KeyServerTLSKey, *serverTLSKey)
+	ctx = context.WithValue(ctx, web.KeyAllowedOrigins, *allowedOrigins)
+	ctx = context.WithValue(ctx, bot.KeyTelegramAppUrl, *tgAppURL)
+	ctx = context.WithValue(ctx, bot.KeyTelegramToken, *tgToken)
+	ctx = context.WithValue(ctx, bot.KeyTelegramWebhook, *tgWebhook)
+	ctx = context.WithValue(ctx, bot.KeyTelegramDonateTonAddress, *tgDonateTon)
+	ctx = context.WithValue(ctx, bot.KeyTelegramDonateEthAddress, *tgDonateEth)
+	ctx = context.WithValue(ctx, bot.KeyTelegramDonateXmrAddress, *tgDonateXmr)
+	return ctx
 }
 
 func sigIntHandler() {

@@ -21,7 +21,10 @@ import (
 	"github.com/gobwas/glob"
 	"github.com/gorilla/websocket"
 
+	_ "buttonmania.win/docs"
 	initdata "github.com/Telegram-Web-Apps/init-data-golang"
+	swaggerFiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
 	cachecontrol "go.eigsys.de/gin-cachecontrol/v2"
 )
 
@@ -41,6 +44,7 @@ const (
 
 type Web struct {
 	ctx      context.Context
+	conf     conf.Conf
 	db       *db.DB
 	engine   *gin.Engine
 	store    sessions.Store
@@ -104,9 +108,9 @@ func NewWeb(ctx context.Context, conf conf.Conf, engine *gin.Engine, db *db.DB, 
 		Public:               true,
 		Private:              false,
 		ProxyRevalidate:      true,
-		MaxAge:               cachecontrol.Duration(30 * time.Minute),
 		SMaxAge:              nil,
 		Immutable:            false,
+		MaxAge:               cachecontrol.Duration(30 * time.Minute),
 		StaleWhileRevalidate: cachecontrol.Duration(2 * time.Hour),
 		StaleIfError:         cachecontrol.Duration(2 * time.Hour),
 	}))
@@ -115,6 +119,7 @@ func NewWeb(ctx context.Context, conf conf.Conf, engine *gin.Engine, db *db.DB, 
 
 	return &Web{
 		ctx:      ctx,
+		conf:     conf,
 		db:       db,
 		engine:   engine,
 		store:    store,
@@ -123,13 +128,19 @@ func NewWeb(ctx context.Context, conf conf.Conf, engine *gin.Engine, db *db.DB, 
 	}, nil
 }
 
-// wsEndpoint handles WebSocket connections.
+// wsEndpoint
+//
+//	@Summary	Handles WebSocket connections
+//	@Param		clientId	query	string	true	"Client ID"
+//	@Param		buttonType	query	string	true	"Button Type"
+//	@Param		initData	query	string	true	"Telegram init data"
+//	@Router		/ws [get]
 func (w *Web) wsEndpoint(c *gin.Context) {
 	clientIdStr := c.Query("clientId")
 	buttonTypeStr := c.Query("buttonType")
-	telegramInitData := c.Query("initData")
+	initDataStr := c.Query("initData")
 	// Check init data for empty value
-	if len(telegramInitData) == 0 {
+	if len(initDataStr) == 0 {
 		http.Error(c.Writer, "Empty telegram init data provided", http.StatusBadRequest)
 		return
 	}
@@ -137,21 +148,21 @@ func (w *Web) wsEndpoint(c *gin.Context) {
 	token := w.ctx.Value(bot.KeyTelegramToken).(string)
 	expIn := 24 * time.Hour
 	// Validate telegram init data
-	if err := initdata.Validate(telegramInitData, token, expIn); err != nil && gin.Mode() == gin.ReleaseMode {
+	if err := initdata.Validate(initDataStr, token, expIn); err != nil && gin.Mode() == gin.ReleaseMode {
 		http.Error(c.Writer, "Invalid telegram init data", http.StatusBadRequest)
 		return
 	}
 
 	// Parse telegram init data
-	tgData, err := initdata.Parse(telegramInitData)
+	initData, err := initdata.Parse(initDataStr)
 	if err != nil {
 		http.Error(c.Writer, "Failed to parse telegram init data", http.StatusBadRequest)
 		return
 	}
 
 	// Convert incoming paramters
-	userLocale := tgData.User.LanguageCode
-	userID := strconv.FormatInt(tgData.User.ID, 10)
+	userLocale := initData.User.LanguageCode
+	userID := strconv.FormatInt(initData.User.ID, 10)
 	clientId := protocol.ClientID(clientIdStr)
 	buttonType := protocol.ButtonType(buttonTypeStr)
 
@@ -178,7 +189,14 @@ func (w *Web) wsEndpoint(c *gin.Context) {
 	}
 }
 
-// statsEndpoint handles API requests for getting room stats.
+// statsEndpoint
+//
+//	@Summary	Handles API requests for getting room stats
+//	@Produce	json
+//	@Param		clientId	query		string	true	"Client ID"
+//	@Param		buttonType	query		string	true	"Button Type"
+//	@Success	200			{object}	protocol.GameRoomStats
+//	@Router		/api/stats [get]
 func (w *Web) statsEndpoint(c *gin.Context) {
 	clientIdStr := c.Query("clientId")
 	buttonTypeStr := c.Query("buttonType")
@@ -200,12 +218,20 @@ func (w *Web) statsEndpoint(c *gin.Context) {
 	c.JSON(http.StatusOK, stats)
 }
 
-// Run starts the web server.
+//	@title						ButtonMania API
+//	@version					1.0
+//	@contact.name				ButtonMania Team
+//	@contact.email				team@buttonmania.win
+//	@host						buttonmania.win
+//	@BasePath					/
+//	@externalDocs.description	OpenAPI
+//	@externalDocs.url			https://swagger.io/resources/open-api/
 func (w *Web) Run() error {
 	serverPort := w.ctx.Value(KeyServerPort).(int)
 	serverTLSCert := w.ctx.Value(KeyServerTLSCert).(string)
 	serverTLSKey := w.ctx.Value(KeyServerTLSKey).(string)
 
+	w.engine.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 	w.engine.GET("/ws", w.wsEndpoint)
 	w.engine.GET("/api/stats", w.statsEndpoint)
 
@@ -216,5 +242,7 @@ func (w *Web) Run() error {
 			serverTLSKey,
 		)
 	}
+
+	// Run starts the web server.
 	return w.engine.Run(":" + strconv.Itoa(serverPort))
 }

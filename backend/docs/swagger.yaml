@@ -1,0 +1,64 @@
+basePath: /
+definitions:
+  protocol.GameRoomStats:
+    properties:
+      bestDuration:
+        type: integer
+      countActive:
+        type: integer
+      countLeaderboard:
+        type: integer
+    type: object
+externalDocs:
+  description: OpenAPI
+  url: https://swagger.io/resources/open-api/
+host: buttonmania.win
+info:
+  contact:
+    email: team@buttonmania.win
+    name: ButtonMania Team
+  title: ButtonMania API
+  version: "1.0"
+paths:
+  /api/stats:
+    get:
+      parameters:
+      - description: Client ID
+        in: query
+        name: clientId
+        required: true
+        type: string
+      - description: Button Type
+        in: query
+        name: buttonType
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/protocol.GameRoomStats'
+      summary: Handles API requests for getting room stats
+  /ws:
+    get:
+      parameters:
+      - description: Client ID
+        in: query
+        name: clientId
+        required: true
+        type: string
+      - description: Button Type
+        in: query
+        name: buttonType
+        required: true
+        type: string
+      - description: Telegram init data
+        in: query
+        name: initData
+        required: true
+        type: string
+      responses: {}
+      summary: Handles WebSocket connections
+swagger: "2.0"

@@ -1,0 +1,96 @@
+{
+    "swagger": "2.0",
+    "info": {
+        "title": "ButtonMania API",
+        "contact": {
+            "name": "ButtonMania Team",
+            "email": "team@buttonmania.win"
+        },
+        "version": "1.0"
+    },
+    "host": "buttonmania.win",
+    "basePath": "/",
+    "paths": {
+        "/api/stats": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "summary": "Handles API requests for getting room stats",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Client ID",
+                        "name": "clientId",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Button Type",
+                        "name": "buttonType",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/protocol.GameRoomStats"
+                        }
+                    }
+                }
+            }
+        },
+        "/ws": {
+            "get": {
+                "summary": "Handles WebSocket connections",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Client ID",
+                        "name": "clientId",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Button Type",
+                        "name": "buttonType",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Telegram init data",
+                        "name": "initData",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            }
+        }
+    },
+    "definitions": {
+        "protocol.GameRoomStats": {
+            "type": "object",
+            "properties": {
+                "bestDuration": {
+                    "type": "integer"
+                },
+                "countActive": {
+                    "type": "integer"
+                },
+                "countLeaderboard": {
+                    "type": "integer"
+                }
+            }
+        }
+    },
+    "externalDocs": {
+        "description": "OpenAPI",
+        "url": "https://swagger.io/resources/open-api/"
+    }
+}
