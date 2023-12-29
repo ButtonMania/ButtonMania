@@ -11,7 +11,6 @@ import (
 	"buttonmania.win/conf"
 	"buttonmania.win/db"
 	"buttonmania.win/protocol"
-	initdata "github.com/Telegram-Web-Apps/init-data-golang"
 	"github.com/barweiss/go-tuple"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-contrib/gzip"
@@ -21,6 +20,9 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/gobwas/glob"
 	"github.com/gorilla/websocket"
+
+	initdata "github.com/Telegram-Web-Apps/init-data-golang"
+	cachecontrol "go.eigsys.de/gin-cachecontrol/v2"
 )
 
 // ContextKey is used for context keys.
@@ -94,6 +96,20 @@ func NewWeb(ctx context.Context, conf conf.Conf, engine *gin.Engine, db *db.DB, 
 	engine.SetTrustedProxies(nil)
 	engine.Use(gzip.Gzip(gzip.DefaultCompression))
 	engine.Use(cors.New(corsConfig))
+	engine.Use(cachecontrol.New(cachecontrol.Config{
+		MustRevalidate:       true,
+		NoCache:              false,
+		NoStore:              false,
+		NoTransform:          false,
+		Public:               true,
+		Private:              false,
+		ProxyRevalidate:      true,
+		MaxAge:               cachecontrol.Duration(30 * time.Minute),
+		SMaxAge:              nil,
+		Immutable:            false,
+		StaleWhileRevalidate: cachecontrol.Duration(2 * time.Hour),
+		StaleIfError:         cachecontrol.Duration(2 * time.Hour),
+	}))
 	engine.Use(sessions.Sessions(sessionName, store))
 	engine.Use(static.Serve("/", static.LocalFile(staticPath, true)))
 
