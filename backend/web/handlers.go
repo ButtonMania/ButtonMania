@@ -8,9 +8,10 @@ import (
 
 	"buttonmania.win/bot"
 	"buttonmania.win/protocol"
-	initdata "github.com/Telegram-Web-Apps/init-data-golang"
 	"github.com/barweiss/go-tuple"
 	"github.com/gin-gonic/gin"
+
+	initdata "github.com/Telegram-Web-Apps/init-data-golang"
 )
 
 // wsHandler

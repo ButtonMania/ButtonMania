@@ -5,8 +5,8 @@ import (
 	"time"
 )
 
-type ButtonType string
 type ButtonPhase string
+type ButtonType string
 type ClientID string
 type UserLocale string
 type UserID string

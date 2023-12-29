@@ -105,9 +105,9 @@ func NewWeb(ctx context.Context, conf conf.Conf, engine *gin.Engine, db *db.DB, 
 		Public:               true,
 		Private:              false,
 		ProxyRevalidate:      true,
-		SMaxAge:              nil,
 		Immutable:            false,
-		MaxAge:               cachecontrol.Duration(30 * time.Minute),
+		SMaxAge:              cachecontrol.Duration(30 * time.Minute),
+		MaxAge:               cachecontrol.Duration(20 * time.Minute),
 		StaleWhileRevalidate: cachecontrol.Duration(2 * time.Hour),
 		StaleIfError:         cachecontrol.Duration(2 * time.Hour),
 	}))
@@ -125,14 +125,14 @@ func NewWeb(ctx context.Context, conf conf.Conf, engine *gin.Engine, db *db.DB, 
 	}, nil
 }
 
-// @title						ButtonMania API
-// @version					1.0
-// @contact.name				ButtonMania Team
-// @contact.email				team@buttonmania.win
-// @host						buttonmania.win
-// @BasePath					/
-// @externalDocs.description	OpenAPI
-// @externalDocs.url			https://swagger.io/resources/open-api/
+//	@title						ButtonMania API
+//	@version					1.0
+//	@contact.name				ButtonMania Team
+//	@contact.email				team@buttonmania.win
+//	@host						buttonmania.win
+//	@BasePath					/
+//	@externalDocs.description	OpenAPI
+//	@externalDocs.url			https://swagger.io/resources/open-api/
 func (w *Web) Run() error {
 	serverPort := w.ctx.Value(KeyServerPort).(int)
 	serverTLSCert := w.ctx.Value(KeyServerTLSCert).(string)
