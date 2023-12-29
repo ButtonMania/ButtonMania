@@ -12,10 +12,12 @@ export class NetworkClient {
     private ws?: WebSocket;
     private wsEndpoint: string;
     private httpEndpoint: string;
+    private clientId: string;
 
     constructor(public config: Config) {
         this.wsEndpoint = config.wsEndpoint;
         this.httpEndpoint = config.httpEndpoint;
+        this.clientId = config.clientId;
         MessageBus.default(GameplayMessageRequest).subscribe(this.sendMessage.bind(this));
     }
 
@@ -80,7 +82,9 @@ export class NetworkClient {
     }
 
     public fetchRoomStats(buttonType: ButtonType): void {
-        axios.get(`${this.httpEndpoint}/stats`, {
+        var url = new URL(`${this.httpEndpoint}/stats`);
+        url.searchParams.append('clientId', this.clientId);
+        axios.get(url.toString(), {
             params: { buttonType: buttonType }
         }).then(response => {
             let raw: any = response.data as object;
@@ -94,6 +98,7 @@ export class NetworkClient {
         var url = new URL(this.wsEndpoint);
         url.searchParams.append('initData', initData);
         url.searchParams.append('buttonType', buttonType);
+        url.searchParams.append('clientId', this.clientId);
         this.ws = this.establishWsConnection(url);
     }
 

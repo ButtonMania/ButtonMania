@@ -1,8 +1,9 @@
 [
-    {
-        "url": "/",
-        "api_host": "192.168.110.130:8080",
-        "launch_params": "user=%7B%22id%22%3A266230437%2C%22first_name%22%3A%22P%CE%BBV%CE%9EL%22%2C%22last_name%22%3A%22-L%22%2C%22username%22%3A%22plitv%22%2C%22language_code%22%3A%22en%22%2C%22allows_write_to_pm%22%3Atrue%7D&chat_instance=2818977238149381673&chat_type=private&auth_date=1696673503&hash=0fc21fc07d31dbeb0fe93af83b8014c35b9f69cdd494f9525326735e6e7c7184",
-        "debug": true
-    }
+	{
+		"url": "/",
+		"client_id": "buttonmania",
+		"api_host": "localhost:8080",
+		"launch_params": "user=%7B%22id%22%3A266230437%2C%22first_name%22%3A%22P%CE%BBV%CE%9EL%22%2C%22last_name%22%3A%22-L%22%2C%22username%22%3A%22plitv%22%2C%22language_code%22%3A%22en%22%2C%22allows_write_to_pm%22%3Atrue%7D&chat_instance=2818977238149381673&chat_type=private&auth_date=1696673503&hash=0fc21fc07d31dbeb0fe93af83b8014c35b9f69cdd494f9525326735e6e7c7184",
+		"debug": true
+	}
 ]

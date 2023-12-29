@@ -1,6 +1,7 @@
 [
     {
         "url": "/",
+        "client_id": "buttonmania",
         "api_host": null,
         "launch_params": null,
         "debug": false

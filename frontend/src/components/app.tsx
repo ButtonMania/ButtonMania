@@ -18,6 +18,7 @@ import i18next from '../i18n';
 
 interface Props {
 	apiHost: string;
+	clientId: string;
 	debug: boolean;
 	launchParams: string;
 	webApp: WebApp;
@@ -35,7 +36,7 @@ export default class App extends Component<Props, State> {
 	constructor(public props: Props) {
 		super(props);
 
-		this.config = new Config(props.apiHost, props.debug);
+		this.config = new Config(props.apiHost, props.clientId, props.debug);
 		this.client = new NetworkClient(this.config);
 
 		MessageBus.default(RoomStats).subscribe(this.onRecieveRoomStats.bind(this));
@@ -61,7 +62,8 @@ export default class App extends Component<Props, State> {
 			isPremium = tgData.user.is_premium;
 		}
 		// Set initial button type and state
-		let buttonType: ButtonType = randomEnum(ButtonType, enumIndex(ButtonType, isPremium ? ButtonType.Prestige : ButtonType.Fortune));
+		let maxType: ButtonType = isPremium ? ButtonType.Prestige : ButtonType.Fortune;
+		let buttonType: ButtonType = randomEnum(ButtonType, enumIndex(ButtonType, maxType));
 		let buttonPhase: ButtonPhase = ButtonPhase.Idle;
 		// Fetch initial room stats, update locale and adjust font size
 		this.client.fetchRoomStats(buttonType);
