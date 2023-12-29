@@ -2,12 +2,10 @@ package web
 
 import (
 	"context"
-	"log"
 	"net/http"
 	"strconv"
 	"time"
 
-	"buttonmania.win/bot"
 	"buttonmania.win/conf"
 	"buttonmania.win/db"
 	"buttonmania.win/protocol"
@@ -22,7 +20,6 @@ import (
 	"github.com/gorilla/websocket"
 
 	_ "buttonmania.win/docs"
-	initdata "github.com/Telegram-Web-Apps/init-data-golang"
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
 	cachecontrol "go.eigsys.de/gin-cachecontrol/v2"
@@ -128,112 +125,22 @@ func NewWeb(ctx context.Context, conf conf.Conf, engine *gin.Engine, db *db.DB, 
 	}, nil
 }
 
-// wsEndpoint
-//
-//	@Summary	Handles WebSocket connections
-//	@Param		clientId	query	string	true	"Client ID"
-//	@Param		buttonType	query	string	true	"Button Type"
-//	@Param		initData	query	string	true	"Telegram init data"
-//	@Router		/ws [get]
-func (w *Web) wsEndpoint(c *gin.Context) {
-	clientIdStr := c.Query("clientId")
-	buttonTypeStr := c.Query("buttonType")
-	initDataStr := c.Query("initData")
-	// Check init data for empty value
-	if len(initDataStr) == 0 {
-		http.Error(c.Writer, "Empty telegram init data provided", http.StatusBadRequest)
-		return
-	}
-
-	token := w.ctx.Value(bot.KeyTelegramToken).(string)
-	expIn := 24 * time.Hour
-	// Validate telegram init data
-	if err := initdata.Validate(initDataStr, token, expIn); err != nil && gin.Mode() == gin.ReleaseMode {
-		http.Error(c.Writer, "Invalid telegram init data", http.StatusBadRequest)
-		return
-	}
-
-	// Parse telegram init data
-	initData, err := initdata.Parse(initDataStr)
-	if err != nil {
-		http.Error(c.Writer, "Failed to parse telegram init data", http.StatusBadRequest)
-		return
-	}
-
-	// Convert incoming paramters
-	userLocale := initData.User.LanguageCode
-	userID := strconv.FormatInt(initData.User.ID, 10)
-	clientId := protocol.ClientID(clientIdStr)
-	buttonType := protocol.ButtonType(buttonTypeStr)
-
-	// Search for room in map
-	room, exists := w.rooms[tuple.New2(clientId, buttonType)]
-	if !exists {
-		http.Error(c.Writer, "Room with the provided type does not exist", http.StatusBadRequest)
-		return
-	}
-
-	ws, err := w.upgrader.Upgrade(c.Writer, c.Request, nil)
-	if err != nil {
-		log.Println("Failed to create WebSocket connection", err)
-		http.Error(c.Writer, "Failed to create WebSocket connection", http.StatusInternalServerError)
-		return
-	}
-	defer ws.Close()
-
-	tgID := protocol.UserID(userID)
-	locale := protocol.NewUserLocale(userLocale)
-	if err := room.MaintainGameSession(tgID, locale, ws); err != nil {
-		log.Println("Error occurred while maintaining the game session:", err)
-		return
-	}
-}
-
-// statsEndpoint
-//
-//	@Summary	Handles API requests for getting room stats
-//	@Produce	json
-//	@Param		clientId	query		string	true	"Client ID"
-//	@Param		buttonType	query		string	true	"Button Type"
-//	@Success	200			{object}	protocol.GameRoomStats
-//	@Router		/api/stats [get]
-func (w *Web) statsEndpoint(c *gin.Context) {
-	clientIdStr := c.Query("clientId")
-	buttonTypeStr := c.Query("buttonType")
-
-	clientId := protocol.ClientID(clientIdStr)
-	buttonType := protocol.ButtonType(buttonTypeStr)
-	room, exists := w.rooms[tuple.New2(clientId, buttonType)]
-	if !exists {
-		http.Error(c.Writer, "Room with the provided type does not exist", http.StatusBadRequest)
-		return
-	}
-
-	stats, err := room.Stats()
-	if err != nil {
-		http.Error(c.Writer, "Failed to get room stats", http.StatusInternalServerError)
-		return
-	}
-
-	c.JSON(http.StatusOK, stats)
-}
-
-//	@title						ButtonMania API
-//	@version					1.0
-//	@contact.name				ButtonMania Team
-//	@contact.email				team@buttonmania.win
-//	@host						buttonmania.win
-//	@BasePath					/
-//	@externalDocs.description	OpenAPI
-//	@externalDocs.url			https://swagger.io/resources/open-api/
+// @title						ButtonMania API
+// @version					1.0
+// @contact.name				ButtonMania Team
+// @contact.email				team@buttonmania.win
+// @host						buttonmania.win
+// @BasePath					/
+// @externalDocs.description	OpenAPI
+// @externalDocs.url			https://swagger.io/resources/open-api/
 func (w *Web) Run() error {
 	serverPort := w.ctx.Value(KeyServerPort).(int)
 	serverTLSCert := w.ctx.Value(KeyServerTLSCert).(string)
 	serverTLSKey := w.ctx.Value(KeyServerTLSKey).(string)
 
 	w.engine.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
-	w.engine.GET("/ws", w.wsEndpoint)
-	w.engine.GET("/api/stats", w.statsEndpoint)
+	w.engine.GET("/ws", w.wsHandler)
+	w.engine.GET("/api/stats", w.statsHandler)
 
 	if len(serverTLSCert) > 0 && len(serverTLSKey) > 0 {
 		return w.engine.RunTLS(
