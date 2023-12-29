@@ -7,18 +7,18 @@ services:
       dockerfile: Dockerfile
     command:
       [
+        "--configpath=/app/config.json",
         "--staticpath=/app/static",
         "--allowedorigins={*buttonmania.win,*buttonmania.top}",
         "--redisaddress=redis:6379",
-        "--serverport=443",
-        "--servertlscert=/certs/buttonmania.pem",
-        "--servertlskey=/certs/buttonmania.key",
+        "--serverport=8080",
         "--telegramdonateton=UQAaTJqQ4bqy6xxCUV-MSWMsJulwLAP1Dyma5TaA0aGwWiEe",
         "--telegramdonateeth=0x0948A61328b3eCeDa37CC33907F30d4AC06C34Ed",
-        "--telegramdonatexmr=48D2unYK1NhfzQusXnXsU6ZrXfPxfSXrKPwTxEknwJygeC6wTSBkWorbX55EYZbBMHZLdeG1GXL8N9Xs6KSFCdEQ5xgoTqg"
+        "--telegramdonatexmr=48D2unYK1NhfzQusXnXsU6ZrXfPxfSXrKPwTxEknwJygeC6wTSBkWorbX55EYZbBMHZLdeG1GXL8N9Xs6KSFCdEQ5xgoTqg",
       ]
     ports:
       - 8443:443
+      - 8080:8080
     environment:
       - GIN_MODE=debug
       - TG_WEBHOOK_URL=${TG_WEBHOOK_URL}
@@ -43,7 +43,7 @@ services:
     networks:
       - buttonmania-network
     healthcheck:
-      test: [ "CMD", "redis-cli", "ping" ]
+      test: ["CMD", "redis-cli", "ping"]
       interval: 10s
       timeout: 5s
       retries: 5
