@@ -128,6 +128,11 @@ func (w *Web) wsEndpoint(c *gin.Context) {
 	clientIdStr := c.Query("clientId")
 	buttonTypeStr := c.Query("buttonType")
 	telegramInitData := c.Query("initData")
+	// Check init data for empty value
+	if len(telegramInitData) == 0 {
+		http.Error(c.Writer, "Empty telegram init data provided", http.StatusBadRequest)
+		return
+	}
 
 	token := w.ctx.Value(bot.KeyTelegramToken).(string)
 	expIn := 24 * time.Hour
