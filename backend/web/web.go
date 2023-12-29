@@ -8,9 +8,11 @@ import (
 	"time"
 
 	"buttonmania.win/bot"
+	"buttonmania.win/conf"
 	"buttonmania.win/db"
 	"buttonmania.win/protocol"
 	initdata "github.com/Telegram-Web-Apps/init-data-golang"
+	"github.com/barweiss/go-tuple"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-contrib/gzip"
 	"github.com/gin-contrib/sessions"
@@ -41,11 +43,11 @@ type Web struct {
 	engine   *gin.Engine
 	store    sessions.Store
 	upgrader websocket.Upgrader
-	rooms    map[protocol.ButtonType]*GameRoom
+	rooms    map[tuple.T2[protocol.ClientID, protocol.ButtonType]]*GameRoom
 }
 
 // NewWeb creates a new Web instance.
-func NewWeb(ctx context.Context, engine *gin.Engine, db *db.DB, debug bool) (*Web, error) {
+func NewWeb(ctx context.Context, conf conf.Conf, engine *gin.Engine, db *db.DB, debug bool) (*Web, error) {
 	sessionName := ctx.Value(KeySessionName).(string)
 	staticPath := ctx.Value(KeyStaticPath).(string)
 	sessionSecret := ctx.Value(KeySessionSecret).(string)
@@ -53,7 +55,7 @@ func NewWeb(ctx context.Context, engine *gin.Engine, db *db.DB, debug bool) (*We
 
 	// Initialize router, session storage
 	store := cookie.NewStore([]byte(sessionSecret))
-	rooms := make(map[protocol.ButtonType]*GameRoom)
+	rooms := make(map[tuple.T2[protocol.ClientID, protocol.ButtonType]]*GameRoom)
 
 	// Initialize WebSocket upgrader
 	originChecker := glob.MustCompile(allowedOrigins)
@@ -78,17 +80,14 @@ func NewWeb(ctx context.Context, engine *gin.Engine, db *db.DB, debug bool) (*We
 	}
 
 	// Initialize game rooms
-	for _, buttonType := range []protocol.ButtonType{
-		protocol.Love,
-		protocol.Fortune,
-		protocol.Peace,
-		protocol.Prestige,
-	} {
-		room, err := NewGameRoom(buttonType, db)
-		if err != nil {
-			return nil, err
+	for _, c := range conf.Clients {
+		for _, r := range c.Rooms {
+			room, err := NewGameRoom(c.ClientId, r, db)
+			if err != nil {
+				return nil, err
+			}
+			rooms[tuple.New2(c.ClientId, r)] = room
 		}
-		rooms[buttonType] = room
 	}
 
 	// Apply middlewares and other router parameters
@@ -110,6 +109,7 @@ func NewWeb(ctx context.Context, engine *gin.Engine, db *db.DB, debug bool) (*We
 
 // wsEndpoint handles WebSocket connections.
 func (w *Web) wsEndpoint(c *gin.Context) {
+	clientIdStr := c.Query("clientId")
 	buttonTypeStr := c.Query("buttonType")
 	telegramInitData := c.Query("initData")
 
@@ -131,10 +131,11 @@ func (w *Web) wsEndpoint(c *gin.Context) {
 	// Convert incoming paramters
 	userLocale := tgData.User.LanguageCode
 	userID := strconv.FormatInt(tgData.User.ID, 10)
+	clientId := protocol.ClientID(clientIdStr)
 	buttonType := protocol.ButtonType(buttonTypeStr)
 
 	// Search for room in map
-	room, exists := w.rooms[buttonType]
+	room, exists := w.rooms[tuple.New2(clientId, buttonType)]
 	if !exists {
 		http.Error(c.Writer, "Room with the provided type does not exist", http.StatusBadRequest)
 		return
@@ -158,10 +159,12 @@ func (w *Web) wsEndpoint(c *gin.Context) {
 
 // statsEndpoint handles API requests for getting room stats.
 func (w *Web) statsEndpoint(c *gin.Context) {
+	clientIdStr := c.Query("clientId")
 	buttonTypeStr := c.Query("buttonType")
 
+	clientId := protocol.ClientID(clientIdStr)
 	buttonType := protocol.ButtonType(buttonTypeStr)
-	room, exists := w.rooms[buttonType]
+	room, exists := w.rooms[tuple.New2(clientId, buttonType)]
 	if !exists {
 		http.Error(c.Writer, "Room with the provided type does not exist", http.StatusBadRequest)
 		return

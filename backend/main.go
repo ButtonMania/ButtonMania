@@ -99,7 +99,7 @@ func main() {
 		log.Fatalf("Failed to initialize bot: %v", err)
 	}
 
-	web, err := web.NewWeb(ctx, engine, db, debug)
+	web, err := web.NewWeb(ctx, conf, engine, db, debug)
 	if err != nil {
 		log.Fatalf("Failed to initialize web: %v", err)
 	}

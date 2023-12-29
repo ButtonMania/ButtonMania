@@ -9,14 +9,14 @@ import (
 	"buttonmania.win/protocol"
 )
 
-//go:embed en/messages/love.txt
-//go:embed en/messages/fortune.txt
-//go:embed en/messages/peace.txt
-//go:embed en/messages/prestige.txt
-//go:embed ru/messages/love.txt
-//go:embed ru/messages/fortune.txt
-//go:embed ru/messages/peace.txt
-//go:embed ru/messages/prestige.txt
+//go:embed en/messages/buttonmania/love.txt
+//go:embed en/messages/buttonmania/fortune.txt
+//go:embed en/messages/buttonmania/peace.txt
+//go:embed en/messages/buttonmania/prestige.txt
+//go:embed ru/messages/buttonmania/love.txt
+//go:embed ru/messages/buttonmania/fortune.txt
+//go:embed ru/messages/buttonmania/peace.txt
+//go:embed ru/messages/buttonmania/prestige.txt
 var fsMessagesLocalization embed.FS
 
 // MessagesLocalization is responsible for loading and providing localized messages.
@@ -26,8 +26,18 @@ type MessagesLocalization struct {
 }
 
 // loadLocalizedMessages loads localized messages from the embedded filesystem.
-func loadLocalizedMessages(fs embed.FS, locale protocol.UserLocale, buttonType protocol.ButtonType) ([]string, error) {
-	filename := fmt.Sprintf("%s/messages/%s.txt", locale, buttonType)
+func loadLocalizedMessages(
+	fs embed.FS,
+	locale protocol.UserLocale,
+	clientId protocol.ClientID,
+	buttonType protocol.ButtonType,
+) ([]string, error) {
+	filename := fmt.Sprintf(
+		"%s/messages/%s/%s.txt",
+		locale,
+		clientId,
+		buttonType,
+	)
 	content, err := fs.ReadFile(filename)
 	if err != nil {
 		return nil, err
@@ -36,10 +46,15 @@ func loadLocalizedMessages(fs embed.FS, locale protocol.UserLocale, buttonType p
 }
 
 // NewMessagesLocalization creates a new MessagesLocalization instance.
-func NewMessagesLocalization(buttonType protocol.ButtonType) (*MessagesLocalization, error) {
+func NewMessagesLocalization(clientId protocol.ClientID, buttonType protocol.ButtonType) (*MessagesLocalization, error) {
 	messages := make(map[protocol.UserLocale][]string)
 	for _, locale := range []protocol.UserLocale{protocol.EN, protocol.RU} {
-		msgs, err := loadLocalizedMessages(fsMessagesLocalization, locale, buttonType)
+		msgs, err := loadLocalizedMessages(
+			fsMessagesLocalization,
+			locale,
+			clientId,
+			buttonType,
+		)
 		if err != nil {
 			return nil, err
 		}

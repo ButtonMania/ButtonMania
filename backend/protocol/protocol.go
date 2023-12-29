@@ -13,11 +13,6 @@ type UserID string
 type MessageType int
 
 const (
-	// Button types
-	Peace    ButtonType = "peace"
-	Love     ButtonType = "love"
-	Fortune  ButtonType = "fortune"
-	Prestige ButtonType = "prestige"
 	// Button phases
 	Push    ButtonPhase = "push"
 	Hold    ButtonPhase = "hold"

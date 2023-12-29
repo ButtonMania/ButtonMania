@@ -18,9 +18,9 @@ type GameRoom struct {
 }
 
 // NewGameRoom creates a new GameRoom instance.
-func NewGameRoom(buttonType protocol.ButtonType, db *db.DB) (*GameRoom, error) {
+func NewGameRoom(clientId protocol.ClientID, buttonType protocol.ButtonType, db *db.DB) (*GameRoom, error) {
 	sessions := make(map[protocol.UserID]*GameSession)
-	msgLoc, err := localization.NewMessagesLocalization(buttonType)
+	msgLoc, err := localization.NewMessagesLocalization(clientId, buttonType)
 	if err != nil {
 		return nil, err
 	}
