@@ -6,10 +6,11 @@ export enum MessageType {
 }
 
 export enum ButtonType {
+    NewYear = "newyear",
     Peace = "peace",
     Love = "love",
     Fortune = "fortune",
-    Prestige = "prestige"
+    Prestige = "prestige",
 }
 
 export enum ButtonPhase {

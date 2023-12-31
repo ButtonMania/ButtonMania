@@ -70,6 +70,13 @@
     transform: translate(0, 0);
 }
 
+.idle.newyear .type {
+    background: linear-gradient(267.99deg, #FFC700 6.93%, #1BB900 47.83%, #0057FF 92.75%);
+    background-clip: text;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
 .idle.love .type {
     background: linear-gradient(267deg, #FDEB47 25.21%, #FF837A 52.49%, #648CFC 75.57%);
     background-clip: text;

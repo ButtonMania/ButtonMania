@@ -9,10 +9,12 @@ import (
 	"buttonmania.win/protocol"
 )
 
+//go:embed en/messages/buttonmania/newyear.txt
 //go:embed en/messages/buttonmania/love.txt
 //go:embed en/messages/buttonmania/fortune.txt
 //go:embed en/messages/buttonmania/peace.txt
 //go:embed en/messages/buttonmania/prestige.txt
+//go:embed ru/messages/buttonmania/newyear.txt
 //go:embed ru/messages/buttonmania/love.txt
 //go:embed ru/messages/buttonmania/fortune.txt
 //go:embed ru/messages/buttonmania/peace.txt

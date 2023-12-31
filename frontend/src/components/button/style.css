@@ -235,6 +235,10 @@
     display: block;
 }
 
+.newyear .gradient {
+    background: linear-gradient(219.49deg, #FFDB5A 19.28%, #75C367 50.11%, #548EFF 81.31%);
+}
+
 .love .gradient {
     background: linear-gradient(219deg, #FBFF45 14.88%, #FF7C7C 49.38%, #5F8BFF 85.35%);
 }
@@ -249,6 +253,10 @@
 
 .prestige .gradient {
     background: linear-gradient(219deg, #00A3FF 14.88%, #00095B 40.2%, #5F8BFF 64.8%, #0D0033 85.35%);
+}
+
+.hold.newyear .gradient {
+    background: linear-gradient(219.49deg, #FFC700 19.28%, #1DC700 49.01%, #0043C6 81.31%);
 }
 
 .hold.love .gradient {

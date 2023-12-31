@@ -167,7 +167,8 @@ export default class Button extends Component<Props, State> {
     onClickLeftArrow(e: MouseEvent): void {
         let prevButtonType: ButtonType = this.prevButtonType(
             this.context.buttonType,
-            this.context.isPremium
+            this.context.isPremium,
+            this.context.isNewYear,
         );
         this.props.arrowsHandler(prevButtonType);
         e.preventDefault();
@@ -176,33 +177,40 @@ export default class Button extends Component<Props, State> {
     onClickRightArrow(e: MouseEvent): void {
         let nextButtonType: ButtonType = this.nextButtonType(
             this.context.buttonType,
-            this.context.isPremium
+            this.context.isPremium,
+            this.context.isNewYear,
         );
         this.props.arrowsHandler(nextButtonType);
         e.preventDefault();
     }
 
-    nextButtonType(buttonType: ButtonType, isPremium: boolean): ButtonType {
+    nextButtonType(buttonType: ButtonType, isPremium: boolean, isNewYear: boolean): ButtonType {
         switch (buttonType) {
+            case ButtonType.NewYear: {
+                return ButtonType.Love;
+            }
             case ButtonType.Love: {
                 return ButtonType.Fortune;
             }
             case ButtonType.Fortune: {
-                return ButtonType.Peace
+                return ButtonType.Peace;
             }
             case ButtonType.Peace: {
-                return isPremium ? ButtonType.Prestige : ButtonType.Love;
+                return isPremium ? ButtonType.Prestige : (isNewYear ? ButtonType.NewYear : ButtonType.Love);
             }
             case ButtonType.Prestige: {
-                return ButtonType.Love;
+                return isNewYear ? ButtonType.NewYear : ButtonType.Love;
             }
         }
     }
 
-    prevButtonType(buttonType: ButtonType, isPremium: boolean): ButtonType {
+    prevButtonType(buttonType: ButtonType, isPremium: boolean, isNewYear: boolean): ButtonType {
         switch (buttonType) {
-            case ButtonType.Love: {
+            case ButtonType.NewYear: {
                 return isPremium ? ButtonType.Prestige : ButtonType.Peace;
+            }
+            case ButtonType.Love: {
+                return isNewYear ? ButtonType.NewYear : (isPremium ? ButtonType.Prestige : ButtonType.Peace);
             }
             case ButtonType.Fortune: {
                 return ButtonType.Love;
@@ -218,11 +226,14 @@ export default class Button extends Component<Props, State> {
 
     buttonStyleClass(buttonType: ButtonType): string {
         switch (buttonType) {
-            case ButtonType.Fortune: {
-                return style.fortune;
+            case ButtonType.NewYear: {
+                return style.newyear;
             }
             case ButtonType.Love: {
                 return style.love;
+            }
+            case ButtonType.Fortune: {
+                return style.fortune;
             }
             case ButtonType.Peace: {
                 return style.peace;

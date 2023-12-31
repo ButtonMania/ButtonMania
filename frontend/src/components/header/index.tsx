@@ -10,11 +10,14 @@ export default class Header extends Component {
 
     buttonStyleClass(buttonType: ButtonType): string {
         switch (buttonType) {
-            case ButtonType.Fortune: {
-                return style.fortune;
+            case ButtonType.NewYear: {
+                return style.newyear;
             }
             case ButtonType.Love: {
                 return style.love;
+            }
+            case ButtonType.Fortune: {
+                return style.fortune;
             }
             case ButtonType.Peace: {
                 return style.peace;

@@ -61,9 +61,16 @@ export default class App extends Component<Props, State> {
 			userId = tgData.user.id;
 			isPremium = tgData.user.is_premium;
 		}
+		// Detect new year special mode
+		const now: Date = new Date();
+		const isNewYear: boolean = (
+			(now.getUTCMonth() >= 11 && now.getUTCDate() == 31) ||
+			(now.getUTCMonth() == 0 && now.getUTCDate() <= 10)
+		);
 		// Set initial button type and state
-		let maxType: ButtonType = isPremium ? ButtonType.Prestige : ButtonType.Fortune;
-		let buttonType: ButtonType = randomEnum(ButtonType, enumIndex(ButtonType, maxType));
+		var maxType: number = enumIndex(ButtonType, isPremium ? ButtonType.Prestige : ButtonType.Fortune);
+		var minType: number = enumIndex(ButtonType, isNewYear ? ButtonType.NewYear : ButtonType.Peace);
+		let buttonType: ButtonType = isNewYear ? ButtonType.NewYear : randomEnum(ButtonType, minType, maxType);
 		let buttonPhase: ButtonPhase = ButtonPhase.Idle;
 		// Fetch initial room stats, update locale and adjust font size
 		this.client.fetchRoomStats(buttonType);
@@ -74,6 +81,7 @@ export default class App extends Component<Props, State> {
 			initData: this.props.webApp.initData || this.props.launchParams,
 			telegramUserID: userId,
 			isPremium: isPremium,
+			isNewYear: isNewYear,
 			locale: locale,
 			buttonPhase: buttonPhase,
 			buttonType: buttonType,

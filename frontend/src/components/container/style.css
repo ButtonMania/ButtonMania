@@ -57,6 +57,10 @@ h6 {
     visibility: hidden;
 }
 
+.newyear {
+    background: linear-gradient(200.97deg, rgba(95, 196, 79, 0.8) 35.94%, rgba(92, 147, 252, 0.8) 100%);
+}
+
 .fortune {
     background: linear-gradient(201deg, rgba(255, 120, 105, 0.80) 0%, rgba(255, 226, 94, 0.80) 100%);
 }

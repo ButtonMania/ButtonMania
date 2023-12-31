@@ -7,6 +7,7 @@ export interface BaseContextProps {
     initData: string;
     telegramUserID: number;
     isPremium: boolean;
+    isNewYear: boolean;
     buttonType: ButtonType;
     buttonPhase: ButtonPhase;
 }

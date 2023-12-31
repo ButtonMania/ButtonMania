@@ -6,9 +6,11 @@ export function secondsToHHMMSS(seconds: number): string {
 	return `${format(hours)}:${format(minutes)}:${format(seconds)}`;
 }
 
-export function randomEnum<T>(anEnum: T, maxIndex?: number): T[keyof T] {
+export function randomEnum<T>(anEnum: T, minIndex?: number, maxIndex?: number): T[keyof T] {
 	const enumValues = (Object.values(anEnum) as unknown) as T[keyof T][];
-	const randomIndex = Math.round(Math.random() * (maxIndex ?? enumValues.length));
+	const startIndex = minIndex ?? 0;
+	const endIndex = maxIndex ?? enumValues.length;
+	const randomIndex = Math.round(startIndex + (Math.random() * endIndex - startIndex));
 	return enumValues[randomIndex];
 }
 
