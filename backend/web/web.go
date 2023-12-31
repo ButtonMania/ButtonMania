@@ -99,8 +99,8 @@ func NewWeb(ctx context.Context, conf conf.Conf, engine *gin.Engine, db *db.DB, 
 	engine.Use(cors.New(corsConfig))
 	engine.Use(cachecontrol.New(cachecontrol.Config{
 		MustRevalidate:       true,
-		NoCache:              false,
-		NoStore:              false,
+		NoCache:              true,
+		NoStore:              true,
 		NoTransform:          false,
 		Public:               true,
 		Private:              false,
@@ -125,14 +125,14 @@ func NewWeb(ctx context.Context, conf conf.Conf, engine *gin.Engine, db *db.DB, 
 	}, nil
 }
 
-//	@title						ButtonMania API
-//	@version					1.0
-//	@contact.name				ButtonMania Team
-//	@contact.email				team@buttonmania.win
-//	@host						buttonmania.win
-//	@BasePath					/
-//	@externalDocs.description	OpenAPI
-//	@externalDocs.url			https://swagger.io/resources/open-api/
+// @title						ButtonMania API
+// @version						1.0
+// @contact.name				ButtonMania Team
+// @contact.email				team@buttonmania.win
+// @host						buttonmania.win
+// @BasePath					/
+// @externalDocs.description	OpenAPI
+// @externalDocs.url			https://swagger.io/resources/open-api/
 func (w *Web) Run() error {
 	serverPort := w.ctx.Value(KeyServerPort).(int)
 	serverTLSCert := w.ctx.Value(KeyServerTLSCert).(string)
