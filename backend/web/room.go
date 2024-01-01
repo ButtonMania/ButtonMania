@@ -11,10 +11,11 @@ import (
 
 // GameRoom represents a room for managing game sessions.
 type GameRoom struct {
-	ButtonType protocol.RoomID
-	MsgLoc     *localization.MessagesLocalization
-	DB         *db.DB
-	sessions   map[protocol.UserID]*GameSession
+	ClientID protocol.ClientID
+	RoomID   protocol.RoomID
+	MsgLoc   *localization.MessagesLocalization
+	DB       *db.DB
+	sessions map[protocol.UserID]*GameSession
 }
 
 // NewGameRoom creates a new GameRoom instance.
@@ -25,10 +26,11 @@ func NewGameRoom(clientId protocol.ClientID, roomId protocol.RoomID, db *db.DB) 
 		return nil, err
 	}
 	return &GameRoom{
-		ButtonType: roomId,
-		MsgLoc:     msgLoc,
-		DB:         db,
-		sessions:   sessions,
+		ClientID: clientId,
+		RoomID:   roomId,
+		MsgLoc:   msgLoc,
+		DB:       db,
+		sessions: sessions,
 	}, nil
 }
 
@@ -36,17 +38,17 @@ func NewGameRoom(clientId protocol.ClientID, roomId protocol.RoomID, db *db.DB) 
 func (r *GameRoom) Stats() (protocol.GameRoomStats, error) {
 	var err error
 
-	countActive, err_ := r.DB.GetUsersCountInActiveSessions(r.ButtonType)
+	countActive, err_ := r.DB.GetUsersCountInActiveSessions(r.ClientID, r.RoomID)
 	if err_ != nil {
 		err = errors.Join(err, err_)
 	}
 
-	countLeaderboard, err_ := r.DB.GetUsersCountInLeaderboard(r.ButtonType)
+	countLeaderboard, err_ := r.DB.GetUsersCountInLeaderboard(r.ClientID, r.RoomID)
 	if err_ != nil {
 		err = errors.Join(err, err_)
 	}
 
-	bestDuration, err_ := r.DB.GetBestDurationInLeaderboard(r.ButtonType)
+	bestDuration, err_ := r.DB.GetBestDurationInLeaderboard(r.ClientID, r.RoomID)
 	if err_ != nil {
 		err = errors.Join(err, err_)
 	}

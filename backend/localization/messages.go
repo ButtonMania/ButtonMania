@@ -48,7 +48,10 @@ func loadLocalizedMessages(
 }
 
 // NewMessagesLocalization creates a new MessagesLocalization instance.
-func NewMessagesLocalization(clientId protocol.ClientID, roomId protocol.RoomID) (*MessagesLocalization, error) {
+func NewMessagesLocalization(
+	clientId protocol.ClientID,
+	roomId protocol.RoomID,
+) (*MessagesLocalization, error) {
 	messages := make(map[protocol.UserLocale][]string)
 	for _, locale := range []protocol.UserLocale{protocol.EN, protocol.RU} {
 		msgs, err := loadLocalizedMessages(
@@ -70,7 +73,9 @@ func NewMessagesLocalization(clientId protocol.ClientID, roomId protocol.RoomID)
 }
 
 // RandomLocalizedMessage returns a random localized message.
-func (s *MessagesLocalization) RandomLocalizedMessage(locale protocol.UserLocale) *string {
+func (s *MessagesLocalization) RandomLocalizedMessage(
+	locale protocol.UserLocale,
+) *string {
 	messages := s.messages[locale]
 	return &messages[rand.Intn(len(messages))]
 }

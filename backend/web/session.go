@@ -109,15 +109,16 @@ func (s *GameSession) gameplayUpdate(
 
 	db := s.room.DB
 	msgLoc := s.room.MsgLoc
-	btnType := s.room.ButtonType
+	clientId := s.room.ClientID
+	roodId := s.room.RoomID
 
 	if s.shouldSendNewRandomMessage() {
 		msg = msgLoc.RandomLocalizedMessage(s.locale)
 		s.lastMsgTime = time.Now().Unix()
 	}
 
-	place, _ := db.GetUserPlaceInActiveSessions(btnType, s.userID)
-	count, _ := db.GetUsersCountInActiveSessions(btnType)
+	place, _ := db.GetUserPlaceInActiveSessions(clientId, roodId, s.userID)
+	count, _ := db.GetUsersCountInActiveSessions(clientId, roodId)
 
 	placeInActiveSessionsPtr = &place
 	countInActiveSessionsPtr = &count
@@ -148,10 +149,11 @@ func (s *GameSession) gameplayRecord(
 	var worldRecordPtr *bool
 
 	db := s.room.DB
-	btnType := s.room.ButtonType
+	clientId := s.room.ClientID
+	roodId := s.room.RoomID
 
-	place, _ := db.GetDurationPlaceInLeaderboard(btnType, gameplayRecord.Duration)
-	count, _ := db.GetUsersCountInLeaderboard(btnType)
+	place, _ := db.GetDurationPlaceInLeaderboard(clientId, roodId, gameplayRecord.Duration)
+	count, _ := db.GetUsersCountInLeaderboard(clientId, roodId)
 
 	worldRecord := place == 1
 	worldRecordPtr = &worldRecord
@@ -222,11 +224,14 @@ func (s *GameSession) updateGameSession(
 	GameplayMessageCtx.Duration = &holdDuration
 	GameplayMessageCtx.Timestamp = &pushTimestamp
 
+	clientId := s.room.ClientID
+	roodId := s.room.RoomID
+
 	if err := s.validateGameSessionUpdate(gameplayCtx, GameplayMessageCtx); err != nil {
 		return nil, err
 	}
 
-	if err := s.room.DB.SetUserDurationToActiveSessions(s.room.ButtonType, s.userID, holdDuration); err != nil {
+	if err := s.room.DB.SetUserDurationToActiveSessions(clientId, roodId, s.userID, holdDuration); err != nil {
 		return nil, err
 	}
 
@@ -251,17 +256,18 @@ func (s *GameSession) closeGameSession(
 	var gameErrorPtr *protocol.GameplayError
 
 	gameplayCtx := s.ctx
-	buttonTime := s.room.ButtonType
+	clientId := s.room.ClientID
+	roodId := s.room.RoomID
 	defer s.room.RemoveGameSession(s.userID)
 
 	if gameplayCtx != nil {
 		record := protocol.NewGameplayRecord(*gameplayCtx)
 
-		if err_ := s.room.DB.AddRecordToLeaderboard(buttonTime, s.userID, record); err_ != nil {
+		if err_ := s.room.DB.AddRecordToLeaderboard(clientId, roodId, s.userID, record); err_ != nil {
 			err = errors.Join(err, err_)
 		}
 
-		if err_ := s.room.DB.RemoveUserDurationFromActiveSessions(buttonTime, s.userID); err_ != nil {
+		if err_ := s.room.DB.RemoveUserDurationFromActiveSessions(clientId, roodId, s.userID); err_ != nil {
 			err = errors.Join(err, err_)
 		}
 
@@ -290,8 +296,11 @@ func (s *GameSession) startGameSession(ws *websocket.Conn) (*protocol.GameplayCo
 	}
 
 	gameplayCtx := protocol.NewGameplayContext()
+	clientId := s.room.ClientID
+	roodId := s.room.RoomID
 	err := s.room.DB.SetUserDurationToActiveSessions(
-		s.room.ButtonType,
+		clientId,
+		roodId,
 		s.userID,
 		*gameplayCtx.Duration,
 	)

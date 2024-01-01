@@ -70,20 +70,23 @@ func (r *Redis) Close() error {
 
 // AddRecordToLeaderboard adds a gameplay record to the leaderboard.
 func (r *Redis) AddRecordToLeaderboard(
+	clientId protocol.ClientID,
 	roomId protocol.RoomID,
 	userID protocol.UserID,
 	record protocol.GameplayRecord,
 ) error {
 	userIDStr := string(userID)
 	recordKey := fmt.Sprintf(
-		"%s:%s:%s:%s",
+		"%s:%s:%s:%s:%s",
+		clientId,
 		RedisKeyRecords,
 		RedisKeyPredefined,
 		roomId,
 		userIDStr,
 	)
 	leaderboardKey := fmt.Sprintf(
-		"%s:%s:%s",
+		"%s:%s:%s:%s",
+		clientId,
 		RedisKeyLeaderboard,
 		RedisKeyPredefined,
 		roomId,
@@ -120,12 +123,14 @@ func (r *Redis) AddRecordToLeaderboard(
 
 // GetDurationPlaceInLeaderboard retrieves the duration place in the leaderboard.
 func (r *Redis) GetDurationPlaceInLeaderboard(
+	clientId protocol.ClientID,
 	roomId protocol.RoomID,
 	duration int64,
 ) (int64, error) {
 	// Define the leaderboard key for the specific roomId.
 	leaderboardKey := fmt.Sprintf(
-		"%s:%s:%s",
+		"%s:%s:%s:%s",
+		clientId,
 		RedisKeyLeaderboard,
 		RedisKeyPredefined,
 		roomId,
@@ -158,11 +163,13 @@ func (r *Redis) GetDurationPlaceInLeaderboard(
 
 // GetUserPlaceInLeaderboard retrieves the user's place in the leaderboard.
 func (r *Redis) GetUserPlaceInLeaderboard(
+	clientId protocol.ClientID,
 	roomId protocol.RoomID,
 	userID protocol.UserID,
 ) (int64, error) {
 	leaderboardKey := fmt.Sprintf(
-		"%s:%s:%s",
+		"%s:%s:%s:%s",
+		clientId,
 		RedisKeyLeaderboard,
 		RedisKeyPredefined,
 		roomId,
@@ -173,9 +180,13 @@ func (r *Redis) GetUserPlaceInLeaderboard(
 }
 
 // GetUsersCountInLeaderboard retrieves the count of users in the leaderboard.
-func (r *Redis) GetUsersCountInLeaderboard(roomId protocol.RoomID) (int64, error) {
+func (r *Redis) GetUsersCountInLeaderboard(
+	clientId protocol.ClientID,
+	roomId protocol.RoomID,
+) (int64, error) {
 	leaderboardKey := fmt.Sprintf(
-		"%s:%s:%s",
+		"%s:%s:%s:%s",
+		clientId,
 		RedisKeyLeaderboard,
 		RedisKeyPredefined,
 		roomId,
@@ -185,11 +196,13 @@ func (r *Redis) GetUsersCountInLeaderboard(roomId protocol.RoomID) (int64, error
 
 // GetUserPlaceInActiveSessions retrieves the user's place in active sessions.
 func (r *Redis) GetUserPlaceInActiveSessions(
+	clientId protocol.ClientID,
 	roomId protocol.RoomID,
 	userID protocol.UserID,
 ) (int64, error) {
 	activeSessionsKey := fmt.Sprintf(
-		"%s:%s:%s",
+		"%s:%s:%s:%s",
+		clientId,
 		RedisKeyActiveSessions,
 		RedisKeyPredefined,
 		roomId,
@@ -200,9 +213,13 @@ func (r *Redis) GetUserPlaceInActiveSessions(
 }
 
 // GetUsersCountInActiveSessions retrieves the count of users in active sessions.
-func (r *Redis) GetUsersCountInActiveSessions(roomId protocol.RoomID) (int64, error) {
+func (r *Redis) GetUsersCountInActiveSessions(
+	clientId protocol.ClientID,
+	roomId protocol.RoomID,
+) (int64, error) {
 	activeSessionsKey := fmt.Sprintf(
-		"%s:%s:%s",
+		"%s:%s:%s:%s",
+		clientId,
 		RedisKeyActiveSessions,
 		RedisKeyPredefined,
 		roomId,
@@ -211,9 +228,13 @@ func (r *Redis) GetUsersCountInActiveSessions(roomId protocol.RoomID) (int64, er
 }
 
 // GetBestDurationInLeaderboard retrieves the best duration achieved by a player in the leaderboard.
-func (r *Redis) GetBestDurationInLeaderboard(roomId protocol.RoomID) (int64, error) {
+func (r *Redis) GetBestDurationInLeaderboard(
+	clientId protocol.ClientID,
+	roomId protocol.RoomID,
+) (int64, error) {
 	leaderboardKey := fmt.Sprintf(
-		"%s:%s:%s",
+		"%s:%s:%s:%s",
+		clientId,
 		RedisKeyLeaderboard,
 		RedisKeyPredefined,
 		roomId,
@@ -227,12 +248,14 @@ func (r *Redis) GetBestDurationInLeaderboard(roomId protocol.RoomID) (int64, err
 
 // SetUserDurationToActiveSessions sets the user's duration in active sessions.
 func (r *Redis) SetUserDurationToActiveSessions(
+	clientId protocol.ClientID,
 	roomId protocol.RoomID,
 	userID protocol.UserID,
 	duration int64,
 ) error {
 	activeSessionsKey := fmt.Sprintf(
-		"%s:%s:%s",
+		"%s:%s:%s:%s",
+		clientId,
 		RedisKeyActiveSessions,
 		RedisKeyPredefined,
 		roomId,
@@ -245,11 +268,13 @@ func (r *Redis) SetUserDurationToActiveSessions(
 
 // RemoveUserDurationFromActiveSessions removes the user's duration from active sessions.
 func (r *Redis) RemoveUserDurationFromActiveSessions(
+	clientId protocol.ClientID,
 	roomId protocol.RoomID,
 	userID protocol.UserID,
 ) error {
 	activeSessionsKey := fmt.Sprintf(
-		"%s:%s:%s",
+		"%s:%s:%s:%s",
+		clientId,
 		RedisKeyActiveSessions,
 		RedisKeyPredefined,
 		roomId,
