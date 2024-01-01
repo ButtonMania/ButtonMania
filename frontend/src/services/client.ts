@@ -82,10 +82,8 @@ export class NetworkClient {
     }
 
     public fetchRoomStats(buttonType: ButtonType): void {
-        var url = new URL(`${this.httpEndpoint}/stats`);
-        url.searchParams.append('clientId', this.clientId);
-        axios.get(url.toString(), {
-            params: { buttonType: buttonType }
+        axios.get(`${this.httpEndpoint}/stats`, {
+            params: { clientId: this.clientId, roomId: buttonType }
         }).then(response => {
             let raw: any = response.data as object;
             let stats: RoomStats = plainToInstance(RoomStats, raw as object);
@@ -97,7 +95,7 @@ export class NetworkClient {
         this.closeWsConnection();
         var url = new URL(this.wsEndpoint);
         url.searchParams.append('initData', initData);
-        url.searchParams.append('buttonType', buttonType);
+        url.searchParams.append('roomId', buttonType);
         url.searchParams.append('clientId', this.clientId);
         this.ws = this.establishWsConnection(url);
     }

@@ -46,7 +46,7 @@ type Web struct {
 	engine   *gin.Engine
 	store    sessions.Store
 	upgrader websocket.Upgrader
-	rooms    map[tuple.T2[protocol.ClientID, protocol.ButtonType]]*GameRoom
+	rooms    map[tuple.T2[protocol.ClientID, protocol.RoomID]]*GameRoom
 }
 
 // NewWeb creates a new Web instance.
@@ -58,7 +58,7 @@ func NewWeb(ctx context.Context, conf conf.Conf, engine *gin.Engine, db *db.DB, 
 
 	// Initialize router, session storage
 	store := cookie.NewStore([]byte(sessionSecret))
-	rooms := make(map[tuple.T2[protocol.ClientID, protocol.ButtonType]]*GameRoom)
+	rooms := make(map[tuple.T2[protocol.ClientID, protocol.RoomID]]*GameRoom)
 
 	// Initialize WebSocket upgrader
 	originChecker := glob.MustCompile(allowedOrigins)
@@ -125,14 +125,12 @@ func NewWeb(ctx context.Context, conf conf.Conf, engine *gin.Engine, db *db.DB, 
 	}, nil
 }
 
-// @title						ButtonMania API
-// @version						1.0
-// @contact.name				ButtonMania Team
-// @contact.email				team@buttonmania.win
-// @host						buttonmania.win
-// @BasePath					/
-// @externalDocs.description	OpenAPI
-// @externalDocs.url			https://swagger.io/resources/open-api/
+// @title			ButtonMania API
+// @version			1.0
+// @contact.name	ButtonMania Team
+// @contact.email	team@buttonmania.win
+// @host			buttonmania.win
+// @BasePath		/
 func (w *Web) Run() error {
 	serverPort := w.ctx.Value(KeyServerPort).(int)
 	serverTLSCert := w.ctx.Value(KeyServerTLSCert).(string)

@@ -30,7 +30,7 @@ paths:
         type: string
       - description: Button Type
         in: query
-        name: buttonType
+        name: roomId
         required: true
         type: string
       produces:
@@ -51,7 +51,7 @@ paths:
         type: string
       - description: Button Type
         in: query
-        name: buttonType
+        name: roomId
         required: true
         type: string
       - description: Telegram init data

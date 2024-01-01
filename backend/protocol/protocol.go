@@ -6,7 +6,7 @@ import (
 )
 
 type ButtonPhase string
-type ButtonType string
+type RoomID string
 type ClientID string
 type UserLocale string
 type UserID string

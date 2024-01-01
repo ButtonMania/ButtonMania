@@ -18,12 +18,12 @@ import (
 //
 //	@Summary	Handles WebSocket connections
 //	@Param		clientId	query	string	true	"Client ID"
-//	@Param		buttonType	query	string	true	"Button Type"
+//	@Param		roomId		query	string	true	"Button Type"
 //	@Param		initData	query	string	true	"Telegram init data"
 //	@Router		/ws [get]
 func (w *Web) wsHandler(c *gin.Context) {
 	clientIdStr := c.Query("clientId")
-	buttonTypeStr := c.Query("buttonType")
+	roomIdStr := c.Query("roomId")
 	initDataStr := c.Query("initData")
 	// Check init data for empty value
 	if len(initDataStr) == 0 {
@@ -50,10 +50,10 @@ func (w *Web) wsHandler(c *gin.Context) {
 	userLocale := initData.User.LanguageCode
 	userID := strconv.FormatInt(initData.User.ID, 10)
 	clientId := protocol.ClientID(clientIdStr)
-	buttonType := protocol.ButtonType(buttonTypeStr)
+	roomId := protocol.RoomID(roomIdStr)
 
 	// Search for room in map
-	room, exists := w.rooms[tuple.New2(clientId, buttonType)]
+	room, exists := w.rooms[tuple.New2(clientId, roomId)]
 	if !exists {
 		http.Error(c.Writer, "Room with the provided type does not exist", http.StatusBadRequest)
 		return
@@ -80,16 +80,16 @@ func (w *Web) wsHandler(c *gin.Context) {
 //	@Summary	Handles API requests for getting room stats
 //	@Produce	json
 //	@Param		clientId	query		string	true	"Client ID"
-//	@Param		buttonType	query		string	true	"Button Type"
+//	@Param		roomId		query		string	true	"Button Type"
 //	@Success	200			{object}	protocol.GameRoomStats
 //	@Router		/api/stats [get]
 func (w *Web) statsHandler(c *gin.Context) {
 	clientIdStr := c.Query("clientId")
-	buttonTypeStr := c.Query("buttonType")
+	roomIdStr := c.Query("roomId")
 
 	clientId := protocol.ClientID(clientIdStr)
-	buttonType := protocol.ButtonType(buttonTypeStr)
-	room, exists := w.rooms[tuple.New2(clientId, buttonType)]
+	roomId := protocol.RoomID(roomIdStr)
+	room, exists := w.rooms[tuple.New2(clientId, roomId)]
 	if !exists {
 		http.Error(c.Writer, "Room with the provided type does not exist", http.StatusBadRequest)
 		return

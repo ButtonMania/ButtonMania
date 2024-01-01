@@ -35,7 +35,7 @@ const docTemplate = `{
                     {
                         "type": "string",
                         "description": "Button Type",
-                        "name": "buttonType",
+                        "name": "roomId",
                         "in": "query",
                         "required": true
                     }
@@ -64,7 +64,7 @@ const docTemplate = `{
                     {
                         "type": "string",
                         "description": "Button Type",
-                        "name": "buttonType",
+                        "name": "roomId",
                         "in": "query",
                         "required": true
                     },

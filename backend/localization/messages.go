@@ -23,8 +23,8 @@ var fsMessagesLocalization embed.FS
 
 // MessagesLocalization is responsible for loading and providing localized messages.
 type MessagesLocalization struct {
-	buttonType protocol.ButtonType
-	messages   map[protocol.UserLocale][]string
+	roomId   protocol.RoomID
+	messages map[protocol.UserLocale][]string
 }
 
 // loadLocalizedMessages loads localized messages from the embedded filesystem.
@@ -32,13 +32,13 @@ func loadLocalizedMessages(
 	fs embed.FS,
 	locale protocol.UserLocale,
 	clientId protocol.ClientID,
-	buttonType protocol.ButtonType,
+	roomId protocol.RoomID,
 ) ([]string, error) {
 	filename := fmt.Sprintf(
 		"%s/messages/%s/%s.txt",
 		locale,
 		clientId,
-		buttonType,
+		roomId,
 	)
 	content, err := fs.ReadFile(filename)
 	if err != nil {
@@ -48,14 +48,14 @@ func loadLocalizedMessages(
 }
 
 // NewMessagesLocalization creates a new MessagesLocalization instance.
-func NewMessagesLocalization(clientId protocol.ClientID, buttonType protocol.ButtonType) (*MessagesLocalization, error) {
+func NewMessagesLocalization(clientId protocol.ClientID, roomId protocol.RoomID) (*MessagesLocalization, error) {
 	messages := make(map[protocol.UserLocale][]string)
 	for _, locale := range []protocol.UserLocale{protocol.EN, protocol.RU} {
 		msgs, err := loadLocalizedMessages(
 			fsMessagesLocalization,
 			locale,
 			clientId,
-			buttonType,
+			roomId,
 		)
 		if err != nil {
 			return nil, err
@@ -64,7 +64,7 @@ func NewMessagesLocalization(clientId protocol.ClientID, buttonType protocol.But
 	}
 
 	return &MessagesLocalization{
-		buttonType,
+		roomId,
 		messages,
 	}, nil
 }

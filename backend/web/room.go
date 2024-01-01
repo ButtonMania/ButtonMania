@@ -11,21 +11,21 @@ import (
 
 // GameRoom represents a room for managing game sessions.
 type GameRoom struct {
-	ButtonType protocol.ButtonType
+	ButtonType protocol.RoomID
 	MsgLoc     *localization.MessagesLocalization
 	DB         *db.DB
 	sessions   map[protocol.UserID]*GameSession
 }
 
 // NewGameRoom creates a new GameRoom instance.
-func NewGameRoom(clientId protocol.ClientID, buttonType protocol.ButtonType, db *db.DB) (*GameRoom, error) {
+func NewGameRoom(clientId protocol.ClientID, roomId protocol.RoomID, db *db.DB) (*GameRoom, error) {
 	sessions := make(map[protocol.UserID]*GameSession)
-	msgLoc, err := localization.NewMessagesLocalization(clientId, buttonType)
+	msgLoc, err := localization.NewMessagesLocalization(clientId, roomId)
 	if err != nil {
 		return nil, err
 	}
 	return &GameRoom{
-		ButtonType: buttonType,
+		ButtonType: roomId,
 		MsgLoc:     msgLoc,
 		DB:         db,
 		sessions:   sessions,

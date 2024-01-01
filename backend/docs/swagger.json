@@ -28,7 +28,7 @@
                     {
                         "type": "string",
                         "description": "Button Type",
-                        "name": "buttonType",
+                        "name": "roomId",
                         "in": "query",
                         "required": true
                     }
@@ -57,7 +57,7 @@
                     {
                         "type": "string",
                         "description": "Button Type",
-                        "name": "buttonType",
+                        "name": "roomId",
                         "in": "query",
                         "required": true
                     },
