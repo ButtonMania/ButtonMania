@@ -27,7 +27,7 @@
                     },
                     {
                         "type": "string",
-                        "description": "Button Type",
+                        "description": "Room ID",
                         "name": "roomId",
                         "in": "query",
                         "required": true
@@ -56,7 +56,7 @@
                     },
                     {
                         "type": "string",
-                        "description": "Button Type",
+                        "description": "Room ID",
                         "name": "roomId",
                         "in": "query",
                         "required": true
@@ -88,9 +88,5 @@
                 }
             }
         }
-    },
-    "externalDocs": {
-        "description": "OpenAPI",
-        "url": "https://swagger.io/resources/open-api/"
     }
 }

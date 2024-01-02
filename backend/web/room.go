@@ -22,37 +22,21 @@ type GameRoom struct {
 func NewGameRoom(clientId protocol.ClientID, roomId protocol.RoomID, db *db.DB) (*GameRoom, error) {
 	sessions := make(map[protocol.UserID]*GameSession)
 	msgLoc, err := localization.NewMessagesLocalization(clientId, roomId)
-	if err != nil {
-		return nil, err
-	}
 	return &GameRoom{
 		ClientID: clientId,
 		RoomID:   roomId,
 		MsgLoc:   msgLoc,
 		DB:       db,
 		sessions: sessions,
-	}, nil
+	}, err
 }
 
 // Stats returns the statistics for the game room.
 func (r *GameRoom) Stats() (protocol.GameRoomStats, error) {
-	var err error
-
-	countActive, err_ := r.DB.GetUsersCountInActiveSessions(r.ClientID, r.RoomID)
-	if err_ != nil {
-		err = errors.Join(err, err_)
-	}
-
-	countLeaderboard, err_ := r.DB.GetUsersCountInLeaderboard(r.ClientID, r.RoomID)
-	if err_ != nil {
-		err = errors.Join(err, err_)
-	}
-
-	bestDuration, err_ := r.DB.GetBestDurationInLeaderboard(r.ClientID, r.RoomID)
-	if err_ != nil {
-		err = errors.Join(err, err_)
-	}
-
+	countActive, countActiveErr := r.DB.GetUsersCountInActiveSessions(r.ClientID, r.RoomID)
+	countLeaderboard, countLeaderboardErr := r.DB.GetUsersCountInLeaderboard(r.ClientID, r.RoomID)
+	bestDuration, bestDurationErr := r.DB.GetBestDurationInLeaderboard(r.ClientID, r.RoomID)
+	err := errors.Join(countActiveErr, countLeaderboardErr, bestDurationErr)
 	return protocol.NewGameRoomStats(&countActive, &countLeaderboard, &bestDuration), err
 }
 

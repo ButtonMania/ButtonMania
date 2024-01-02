@@ -262,15 +262,9 @@ func (s *GameSession) closeGameSession(
 
 	if gameplayCtx != nil {
 		record := protocol.NewGameplayRecord(*gameplayCtx)
-
-		if err_ := s.room.DB.AddRecordToLeaderboard(clientId, roodId, s.userID, record); err_ != nil {
-			err = errors.Join(err, err_)
-		}
-
-		if err_ := s.room.DB.RemoveUserDurationFromActiveSessions(clientId, roodId, s.userID); err_ != nil {
-			err = errors.Join(err, err_)
-		}
-
+		addRecordToLeaderboardErr := s.room.DB.AddRecordToLeaderboard(clientId, roodId, s.userID, record)
+		remUserDurationFromActiveSessionsErr := s.room.DB.RemoveUserDurationFromActiveSessions(clientId, roodId, s.userID)
+		err = errors.Join(err, addRecordToLeaderboardErr, remUserDurationFromActiveSessionsErr)
 		gameRecordPtr = &record
 	}
 

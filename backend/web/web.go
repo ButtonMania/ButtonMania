@@ -95,6 +95,8 @@ func NewWeb(ctx context.Context, conf conf.Conf, engine *gin.Engine, db *db.DB, 
 
 	// Apply middlewares and other router parameters
 	engine.SetTrustedProxies(nil)
+	engine.Use(static.Serve("/", static.LocalFile(staticPath, true)))
+	engine.Use(sessions.Sessions(sessionName, store))
 	engine.Use(gzip.Gzip(gzip.DefaultCompression))
 	engine.Use(cors.New(corsConfig))
 	engine.Use(cachecontrol.New(cachecontrol.Config{
@@ -111,8 +113,6 @@ func NewWeb(ctx context.Context, conf conf.Conf, engine *gin.Engine, db *db.DB, 
 		StaleWhileRevalidate: cachecontrol.Duration(2 * time.Hour),
 		StaleIfError:         cachecontrol.Duration(2 * time.Hour),
 	}))
-	engine.Use(sessions.Sessions(sessionName, store))
-	engine.Use(static.Serve("/", static.LocalFile(staticPath, true)))
 
 	return &Web{
 		ctx:      ctx,
@@ -125,12 +125,14 @@ func NewWeb(ctx context.Context, conf conf.Conf, engine *gin.Engine, db *db.DB, 
 	}, nil
 }
 
-// @title			ButtonMania API
-// @version			1.0
-// @contact.name	ButtonMania Team
-// @contact.email	team@buttonmania.win
-// @host			buttonmania.win
-// @BasePath		/
+// Run
+//
+//	@title			ButtonMania API
+//	@version		1.0
+//	@contact.name	ButtonMania Team
+//	@contact.email	team@buttonmania.win
+//	@host			buttonmania.win
+//	@BasePath		/
 func (w *Web) Run() error {
 	serverPort := w.ctx.Value(KeyServerPort).(int)
 	serverTLSCert := w.ctx.Value(KeyServerTLSCert).(string)

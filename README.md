@@ -84,6 +84,7 @@ For the frontend, you can use the following CLI commands:
 
 Here's a list of CLI parameters and corresponding environment variables that you can use as fallback:
 
+- `postgresurl`: Postgres server url (Required). Env: `POSTGRES_URL`
 - `redisaddress`: Redis server address (Required). Env: `REDIS_ADDRESS`
 - `redisusername`: Redis server username. Env: `REDIS_USERNAME`
 - `redispassword`: Redis server password. Env: `REDIS_PASSWORD`

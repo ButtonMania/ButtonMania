@@ -1,6 +1,7 @@
 package web
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 	"strconv"
@@ -18,7 +19,7 @@ import (
 //
 //	@Summary	Handles WebSocket connections
 //	@Param		clientId	query	string	true	"Client ID"
-//	@Param		roomId		query	string	true	"Button Type"
+//	@Param		roomId		query	string	true	"Room ID"
 //	@Param		initData	query	string	true	"Telegram init data"
 //	@Router		/ws [get]
 func (w *Web) wsHandler(c *gin.Context) {
@@ -55,7 +56,7 @@ func (w *Web) wsHandler(c *gin.Context) {
 	// Search for room in map
 	room, exists := w.rooms[tuple.New2(clientId, roomId)]
 	if !exists {
-		http.Error(c.Writer, "Room with the provided type does not exist", http.StatusBadRequest)
+		http.Error(c.Writer, "Room with the provided id does not exist", http.StatusBadRequest)
 		return
 	}
 
@@ -80,7 +81,7 @@ func (w *Web) wsHandler(c *gin.Context) {
 //	@Summary	Handles API requests for getting room stats
 //	@Produce	json
 //	@Param		clientId	query		string	true	"Client ID"
-//	@Param		roomId		query		string	true	"Button Type"
+//	@Param		roomId		query		string	true	"Room ID"
 //	@Success	200			{object}	protocol.GameRoomStats
 //	@Router		/api/stats [get]
 func (w *Web) statsHandler(c *gin.Context) {
@@ -91,13 +92,21 @@ func (w *Web) statsHandler(c *gin.Context) {
 	roomId := protocol.RoomID(roomIdStr)
 	room, exists := w.rooms[tuple.New2(clientId, roomId)]
 	if !exists {
-		http.Error(c.Writer, "Room with the provided type does not exist", http.StatusBadRequest)
+		http.Error(
+			c.Writer,
+			"Room with the provided id does not exist",
+			http.StatusBadRequest,
+		)
 		return
 	}
 
 	stats, err := room.Stats()
 	if err != nil {
-		http.Error(c.Writer, "Failed to get room stats", http.StatusInternalServerError)
+		http.Error(
+			c.Writer,
+			fmt.Sprintln("Failed to get room stats:", err),
+			http.StatusInternalServerError,
+		)
 		return
 	}
 

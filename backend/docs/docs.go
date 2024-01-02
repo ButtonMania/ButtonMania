@@ -34,7 +34,7 @@ const docTemplate = `{
                     },
                     {
                         "type": "string",
-                        "description": "Button Type",
+                        "description": "Room ID",
                         "name": "roomId",
                         "in": "query",
                         "required": true
@@ -63,7 +63,7 @@ const docTemplate = `{
                     },
                     {
                         "type": "string",
-                        "description": "Button Type",
+                        "description": "Room ID",
                         "name": "roomId",
                         "in": "query",
                         "required": true
@@ -95,10 +95,6 @@ const docTemplate = `{
                 }
             }
         }
-    },
-    "externalDocs": {
-        "description": "OpenAPI",
-        "url": "https://swagger.io/resources/open-api/"
     }
 }`
 

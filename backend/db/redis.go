@@ -5,17 +5,12 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
-	"math/rand"
-	"strconv"
 
 	"buttonmania.win/protocol"
 	"github.com/go-redis/redis/v8"
 )
 
 type RedisKey string
-
-const trimRandChance = 5
-const maxRecordsCount = 100
 
 const (
 	// RedisKey represents Redis custom keys.
@@ -31,7 +26,7 @@ type Redis struct {
 	client *redis.Client
 }
 
-// NewDB creates a new database instance.
+// NewRedis creates a new redis instance.
 func NewRedis(ctx context.Context) (*Redis, error) {
 	redisaddress, _ := ctx.Value(KeyRedisAddress).(string)
 	redisusername, _ := ctx.Value(KeyRedisUsername).(string)
@@ -63,135 +58,9 @@ func NewRedis(ctx context.Context) (*Redis, error) {
 	}, nil
 }
 
-// Close closes the database connection.
+// Close closes the redis connection.
 func (r *Redis) Close() error {
 	return r.client.Close()
-}
-
-// AddRecordToLeaderboard adds a gameplay record to the leaderboard.
-func (r *Redis) AddRecordToLeaderboard(
-	clientId protocol.ClientID,
-	roomId protocol.RoomID,
-	userID protocol.UserID,
-	record protocol.GameplayRecord,
-) error {
-	userIDStr := string(userID)
-	recordKey := fmt.Sprintf(
-		"%s:%s:%s:%s:%s",
-		clientId,
-		RedisKeyRecords,
-		RedisKeyPredefined,
-		roomId,
-		userIDStr,
-	)
-	leaderboardKey := fmt.Sprintf(
-		"%s:%s:%s:%s",
-		clientId,
-		RedisKeyLeaderboard,
-		RedisKeyPredefined,
-		roomId,
-	)
-
-	// Retrieve current record
-	zScoreVal := r.client.ZScore(r.ctx, leaderboardKey, userIDStr).Val()
-
-	// Write only better results
-	floatDuration := float64(record.Duration)
-	if floatDuration > zScoreVal {
-		if err := r.client.ZAdd(r.ctx, leaderboardKey, &redis.Z{
-			Score:  floatDuration,
-			Member: userIDStr,
-		}).Err(); err != nil {
-			return err
-		}
-	}
-
-	// Add record to list
-	if err := r.client.LPush(r.ctx, recordKey, record).Err(); err != nil {
-		return err
-	}
-
-	// Trim list
-	if rand.Intn(trimRandChance) == 0 {
-		if err := r.client.LTrim(r.ctx, recordKey, 0, maxRecordsCount).Err(); err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-// GetDurationPlaceInLeaderboard retrieves the duration place in the leaderboard.
-func (r *Redis) GetDurationPlaceInLeaderboard(
-	clientId protocol.ClientID,
-	roomId protocol.RoomID,
-	duration int64,
-) (int64, error) {
-	// Define the leaderboard key for the specific roomId.
-	leaderboardKey := fmt.Sprintf(
-		"%s:%s:%s:%s",
-		clientId,
-		RedisKeyLeaderboard,
-		RedisKeyPredefined,
-		roomId,
-	)
-
-	// Get the range of members with scores greater than or equal to the given duration.
-	rng, zRangeErr := r.client.ZRangeByScore(r.ctx, leaderboardKey, &redis.ZRangeBy{
-		Min:    strconv.FormatInt(duration, 10),
-		Max:    "+inf",
-		Offset: 0,
-		Count:  1,
-	}).Result()
-
-	// Get the total count of members in the leaderboard.
-	count, zCountErr := r.client.ZCount(r.ctx, leaderboardKey, "-inf", "+inf").Result()
-
-	if len(rng) > 0 {
-		// If a member with a score less than or equal to the given duration was found,
-		// get its rank in the leaderboard.
-		rank, zRankErr := r.client.ZRank(r.ctx, leaderboardKey, rng[0]).Result()
-
-		// Calculate the place (count - rank) and return it along with any errors.
-		return count - rank, errors.Join(zRangeErr, zCountErr, zRankErr)
-	}
-
-	// If no member with a score less than or equal to the given duration was found,
-	// the place is one greater than the total count (since ranks are 0-based).
-	return count + 1, errors.Join(zRangeErr, zCountErr)
-}
-
-// GetUserPlaceInLeaderboard retrieves the user's place in the leaderboard.
-func (r *Redis) GetUserPlaceInLeaderboard(
-	clientId protocol.ClientID,
-	roomId protocol.RoomID,
-	userID protocol.UserID,
-) (int64, error) {
-	leaderboardKey := fmt.Sprintf(
-		"%s:%s:%s:%s",
-		clientId,
-		RedisKeyLeaderboard,
-		RedisKeyPredefined,
-		roomId,
-	)
-	count, zCountErr := r.client.ZCount(r.ctx, leaderboardKey, "-inf", "+inf").Result()
-	rank, zRankErr := r.client.ZRank(r.ctx, leaderboardKey, string(userID)).Result()
-	return count - rank, errors.Join(zCountErr, zRankErr)
-}
-
-// GetUsersCountInLeaderboard retrieves the count of users in the leaderboard.
-func (r *Redis) GetUsersCountInLeaderboard(
-	clientId protocol.ClientID,
-	roomId protocol.RoomID,
-) (int64, error) {
-	leaderboardKey := fmt.Sprintf(
-		"%s:%s:%s:%s",
-		clientId,
-		RedisKeyLeaderboard,
-		RedisKeyPredefined,
-		roomId,
-	)
-	return r.client.ZCount(r.ctx, leaderboardKey, "-inf", "+inf").Result()
 }
 
 // GetUserPlaceInActiveSessions retrieves the user's place in active sessions.
@@ -225,25 +94,6 @@ func (r *Redis) GetUsersCountInActiveSessions(
 		roomId,
 	)
 	return r.client.ZCount(r.ctx, activeSessionsKey, "-inf", "+inf").Result()
-}
-
-// GetBestDurationInLeaderboard retrieves the best duration achieved by a player in the leaderboard.
-func (r *Redis) GetBestDurationInLeaderboard(
-	clientId protocol.ClientID,
-	roomId protocol.RoomID,
-) (int64, error) {
-	leaderboardKey := fmt.Sprintf(
-		"%s:%s:%s:%s",
-		clientId,
-		RedisKeyLeaderboard,
-		RedisKeyPredefined,
-		roomId,
-	)
-	rng, err := r.client.ZRangeWithScores(r.ctx, leaderboardKey, -1, -1).Result()
-	if len(rng) == 0 || err != nil {
-		return 0, err
-	}
-	return int64(rng[0].Score), nil
 }
 
 // SetUserDurationToActiveSessions sets the user's duration in active sessions.

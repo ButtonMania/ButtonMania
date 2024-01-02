@@ -9,9 +9,6 @@ definitions:
       countLeaderboard:
         type: integer
     type: object
-externalDocs:
-  description: OpenAPI
-  url: https://swagger.io/resources/open-api/
 host: buttonmania.win
 info:
   contact:
@@ -28,7 +25,7 @@ paths:
         name: clientId
         required: true
         type: string
-      - description: Button Type
+      - description: Room ID
         in: query
         name: roomId
         required: true
@@ -49,7 +46,7 @@ paths:
         name: clientId
         required: true
         type: string
-      - description: Button Type
+      - description: Room ID
         in: query
         name: roomId
         required: true
