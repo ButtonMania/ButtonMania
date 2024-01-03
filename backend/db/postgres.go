@@ -172,3 +172,23 @@ func (p *Postgres) getBestDurationInLeaderboard(
 	}
 	return duration, err
 }
+
+// retrieves today's best duration from the leaderboard.
+func (p *Postgres) getTodaysRecordInLeaderboard(
+	clientId protocol.ClientID,
+	roomId protocol.RoomID,
+) (int64, error) {
+	var duration int64
+	err := p.pool.QueryRow(
+		p.ctx,
+		`SELECT COALESCE(MAX(duration), 0)
+		FROM records 
+		WHERE client_id=$1 AND room_id=$2 AND ts >= now()::date AND duration > 0`,
+		clientId,
+		roomId,
+	).Scan(&duration)
+	if err == pgx.ErrNoRows {
+		return 0, nil
+	}
+	return duration, err
+}

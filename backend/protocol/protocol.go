@@ -87,6 +87,7 @@ type GameRoomStats struct {
 	CountActive      *int64 `json:"countActive,omitempty"`
 	CountLeaderboard *int64 `json:"countLeaderboard,omitempty"`
 	BestDuration     *int64 `json:"bestDuration,omitempty"`
+	TodaysRecord     *int64 `json:"todaysRecord,omitempty"`
 }
 
 // NewGameRoomStats creates a new GameRoomStats.
@@ -94,11 +95,13 @@ func NewGameRoomStats(
 	totalCountActive,
 	totalCountLeaderboard,
 	bestDuration *int64,
+	todaysRecord *int64,
 ) GameRoomStats {
 	return GameRoomStats{
 		CountActive:      totalCountActive,
 		CountLeaderboard: totalCountLeaderboard,
 		BestDuration:     bestDuration,
+		TodaysRecord:     todaysRecord,
 	}
 }
 
@@ -121,7 +124,10 @@ func NewGameplayMessage(
 	gameplayRecord *GameplayRecord,
 	gameplayError *GameplayError,
 	message *string,
-	placeActive, totalCountActive, placeLeaderboard, totalCountLeaderboard *int64,
+	placeActive *int64,
+	totalCountActive *int64,
+	placeLeaderboard *int64,
+	totalCountLeaderboard *int64,
 	worldRecord *bool,
 	messageType MessageType,
 ) GameplayMessage {

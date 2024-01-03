@@ -8,6 +8,8 @@ definitions:
         type: integer
       countLeaderboard:
         type: integer
+      todaysRecord:
+        type: integer
     type: object
 host: buttonmania.win
 info:

@@ -17,6 +17,7 @@ export interface HeaderContextProps extends BaseContextProps {
     messageText: string;
     currentRecordText: string;
     currentRecordValue: number;
+    todaysRecordValue: number;
 }
 
 export interface ButtonContextProps extends BaseContextProps {

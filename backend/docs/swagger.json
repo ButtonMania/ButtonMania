@@ -85,6 +85,9 @@
                 },
                 "countLeaderboard": {
                     "type": "integer"
+                },
+                "todaysRecord": {
+                    "type": "integer"
                 }
             }
         }

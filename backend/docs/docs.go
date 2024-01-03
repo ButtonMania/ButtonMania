@@ -92,6 +92,9 @@ const docTemplate = `{
                 },
                 "countLeaderboard": {
                     "type": "integer"
+                },
+                "todaysRecord": {
+                    "type": "integer"
                 }
             }
         }

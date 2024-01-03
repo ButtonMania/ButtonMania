@@ -105,6 +105,17 @@ func (db *DB) GetBestDurationInLeaderboard(
 	)
 }
 
+// GetTodaysRecordInLeaderboard retrieves today's best duration from  the leaderboard.
+func (db *DB) GetTodaysRecordInLeaderboard(
+	clientId protocol.ClientID,
+	roomId protocol.RoomID,
+) (int64, error) {
+	return db.postgres.getTodaysRecordInLeaderboard(
+		clientId,
+		roomId,
+	)
+}
+
 // GetUserPlaceInActiveSessions retrieves the user's place in active sessions.
 func (db *DB) GetUserPlaceInActiveSessions(
 	clientId protocol.ClientID,
