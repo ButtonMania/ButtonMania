@@ -58,14 +58,14 @@ func NewPostgres(ctx context.Context) (*Postgres, error) {
 	}, err
 }
 
-// Close closes the postgres connection.
-func (p *Postgres) Close() error {
+// closes the postgres connection.
+func (p *Postgres) close() error {
 	defer p.pool.Close()
 	return nil
 }
 
-// AddRecordToLeaderboard adds a gameplay record to the leaderboard.
-func (p *Postgres) AddRecordToLeaderboard(
+// adds a gameplay record to the leaderboard.
+func (p *Postgres) addRecordToLeaderboard(
 	clientId protocol.ClientID,
 	roomId protocol.RoomID,
 	userID protocol.UserID,
@@ -85,8 +85,8 @@ func (p *Postgres) AddRecordToLeaderboard(
 	return err
 }
 
-// GetDurationPlaceInLeaderboard retrieves the duration place in the leaderboard.
-func (p *Postgres) GetDurationPlaceInLeaderboard(
+// retrieves the duration place in the leaderboard.
+func (p *Postgres) getDurationPlaceInLeaderboard(
 	clientId protocol.ClientID,
 	roomId protocol.RoomID,
 	duration int64,
@@ -107,8 +107,8 @@ func (p *Postgres) GetDurationPlaceInLeaderboard(
 	return count, err
 }
 
-// GetUserPlaceInLeaderboard retrieves the user's place in the leaderboard.
-func (p *Postgres) GetUserPlaceInLeaderboard(
+// retrieves the user's place in the leaderboard.
+func (p *Postgres) getUserPlaceInLeaderboard(
 	clientId protocol.ClientID,
 	roomId protocol.RoomID,
 	userID protocol.UserID,
@@ -133,8 +133,8 @@ func (p *Postgres) GetUserPlaceInLeaderboard(
 	return count, err
 }
 
-// GetUsersCountInLeaderboard retrieves the count of users in the leaderboard.
-func (p *Postgres) GetUsersCountInLeaderboard(
+// retrieves the count of users in the leaderboard.
+func (p *Postgres) getUsersCountInLeaderboard(
 	clientId protocol.ClientID,
 	roomId protocol.RoomID,
 ) (int64, error) {
@@ -153,8 +153,8 @@ func (p *Postgres) GetUsersCountInLeaderboard(
 	return count, err
 }
 
-// GetBestDurationInLeaderboard retrieves the best duration achieved by a player in the leaderboard.
-func (p *Postgres) GetBestDurationInLeaderboard(
+// retrieves the best duration achieved by a player in the leaderboard.
+func (p *Postgres) getBestDurationInLeaderboard(
 	clientId protocol.ClientID,
 	roomId protocol.RoomID,
 ) (int64, error) {

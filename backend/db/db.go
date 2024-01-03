@@ -37,8 +37,8 @@ func NewDB(ctx context.Context) (*DB, error) {
 
 // Close closes the database connection.
 func (db *DB) Close() error {
-	rErr := db.redis.Close()
-	pErr := db.postgres.Close()
+	rErr := db.redis.close()
+	pErr := db.postgres.close()
 	return errors.Join(rErr, pErr)
 }
 
@@ -49,7 +49,12 @@ func (db *DB) AddRecordToLeaderboard(
 	userID protocol.UserID,
 	record protocol.GameplayRecord,
 ) error {
-	return db.postgres.AddRecordToLeaderboard(clientId, roomId, userID, record)
+	return db.postgres.addRecordToLeaderboard(
+		clientId,
+		roomId,
+		userID,
+		record,
+	)
 }
 
 // GetDurationPlaceInLeaderboard retrieves the duration place in the leaderboard.
@@ -58,7 +63,11 @@ func (db *DB) GetDurationPlaceInLeaderboard(
 	roomId protocol.RoomID,
 	duration int64,
 ) (int64, error) {
-	return db.postgres.GetDurationPlaceInLeaderboard(clientId, roomId, duration)
+	return db.postgres.getDurationPlaceInLeaderboard(
+		clientId,
+		roomId,
+		duration,
+	)
 }
 
 // GetUserPlaceInLeaderboard retrieves the user's place in the leaderboard.
@@ -67,7 +76,11 @@ func (db *DB) GetUserPlaceInLeaderboard(
 	roomId protocol.RoomID,
 	userID protocol.UserID,
 ) (int64, error) {
-	return db.postgres.GetUserPlaceInLeaderboard(clientId, roomId, userID)
+	return db.postgres.getUserPlaceInLeaderboard(
+		clientId,
+		roomId,
+		userID,
+	)
 }
 
 // GetUsersCountInLeaderboard retrieves the count of users in the leaderboard.
@@ -75,7 +88,10 @@ func (db *DB) GetUsersCountInLeaderboard(
 	clientId protocol.ClientID,
 	roomId protocol.RoomID,
 ) (int64, error) {
-	return db.postgres.GetUsersCountInLeaderboard(clientId, roomId)
+	return db.postgres.getUsersCountInLeaderboard(
+		clientId,
+		roomId,
+	)
 }
 
 // GetBestDurationInLeaderboard retrieves the best duration achieved by a player in the leaderboard.
@@ -83,7 +99,10 @@ func (db *DB) GetBestDurationInLeaderboard(
 	clientId protocol.ClientID,
 	roomId protocol.RoomID,
 ) (int64, error) {
-	return db.postgres.GetBestDurationInLeaderboard(clientId, roomId)
+	return db.postgres.getBestDurationInLeaderboard(
+		clientId,
+		roomId,
+	)
 }
 
 // GetUserPlaceInActiveSessions retrieves the user's place in active sessions.
@@ -92,7 +111,11 @@ func (db *DB) GetUserPlaceInActiveSessions(
 	roomId protocol.RoomID,
 	userID protocol.UserID,
 ) (int64, error) {
-	return db.redis.GetUserPlaceInActiveSessions(clientId, roomId, userID)
+	return db.redis.getUserPlaceInActiveSessions(
+		clientId,
+		roomId,
+		userID,
+	)
 }
 
 // GetUsersCountInActiveSessions retrieves the count of users in active sessions.
@@ -100,7 +123,10 @@ func (db *DB) GetUsersCountInActiveSessions(
 	clientId protocol.ClientID,
 	roomId protocol.RoomID,
 ) (int64, error) {
-	return db.redis.GetUsersCountInActiveSessions(clientId, roomId)
+	return db.redis.getUsersCountInActiveSessions(
+		clientId,
+		roomId,
+	)
 }
 
 // SetUserDurationToActiveSessions sets the user's duration in active sessions.
@@ -109,8 +135,15 @@ func (db *DB) SetUserDurationToActiveSessions(
 	roomId protocol.RoomID,
 	userID protocol.UserID,
 	duration int64,
+	timestamp int64,
 ) error {
-	return db.redis.SetUserDurationToActiveSessions(clientId, roomId, userID, duration)
+	return db.redis.setUserDurationToActiveSessions(
+		clientId,
+		roomId,
+		userID,
+		duration,
+		timestamp,
+	)
 }
 
 // RemoveUserDurationFromActiveSessions removes the user's duration from active sessions.
@@ -118,6 +151,12 @@ func (db *DB) RemoveUserDurationFromActiveSessions(
 	clientId protocol.ClientID,
 	roomId protocol.RoomID,
 	userID protocol.UserID,
+	timestamp int64,
 ) error {
-	return db.redis.RemoveUserDurationFromActiveSessions(clientId, roomId, userID)
+	return db.redis.removeUserDurationFromActiveSessions(
+		clientId,
+		roomId,
+		userID,
+		timestamp,
+	)
 }

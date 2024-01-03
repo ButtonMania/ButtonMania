@@ -219,19 +219,31 @@ func (s *GameSession) updateGameSession(
 	ws *websocket.Conn,
 ) (*protocol.GameplayContext, error) {
 	var err error
+	nowTimestamp := time.Now().Unix()
 	pushTimestamp := *gameplayCtx.Timestamp
-	holdDuration := time.Now().Unix() - pushTimestamp
+	holdDuration := nowTimestamp - pushTimestamp
 	GameplayMessageCtx.Duration = &holdDuration
 	GameplayMessageCtx.Timestamp = &pushTimestamp
 
 	clientId := s.room.ClientID
 	roodId := s.room.RoomID
 
-	if err := s.validateGameSessionUpdate(gameplayCtx, GameplayMessageCtx); err != nil {
+	err = s.validateGameSessionUpdate(
+		gameplayCtx,
+		GameplayMessageCtx,
+	)
+	if err != nil {
 		return nil, err
 	}
 
-	if err := s.room.DB.SetUserDurationToActiveSessions(clientId, roodId, s.userID, holdDuration); err != nil {
+	err = s.room.DB.SetUserDurationToActiveSessions(
+		clientId,
+		roodId,
+		s.userID,
+		holdDuration,
+		nowTimestamp,
+	)
+	if err != nil {
 		return nil, err
 	}
 
@@ -262,9 +274,23 @@ func (s *GameSession) closeGameSession(
 
 	if gameplayCtx != nil {
 		record := protocol.NewGameplayRecord(*gameplayCtx)
-		addRecordToLeaderboardErr := s.room.DB.AddRecordToLeaderboard(clientId, roodId, s.userID, record)
-		remUserDurationFromActiveSessionsErr := s.room.DB.RemoveUserDurationFromActiveSessions(clientId, roodId, s.userID)
-		err = errors.Join(err, addRecordToLeaderboardErr, remUserDurationFromActiveSessionsErr)
+		addRecordToLeaderboardErr := s.room.DB.AddRecordToLeaderboard(
+			clientId,
+			roodId,
+			s.userID,
+			record,
+		)
+		remUserDurationFromActiveSessionsErr := s.room.DB.RemoveUserDurationFromActiveSessions(
+			clientId,
+			roodId,
+			s.userID,
+			*gameplayCtx.Timestamp,
+		)
+		err = errors.Join(
+			err,
+			addRecordToLeaderboardErr,
+			remUserDurationFromActiveSessionsErr,
+		)
 		gameRecordPtr = &record
 	}
 
@@ -297,6 +323,7 @@ func (s *GameSession) startGameSession(ws *websocket.Conn) (*protocol.GameplayCo
 		roodId,
 		s.userID,
 		*gameplayCtx.Duration,
+		*gameplayCtx.Timestamp,
 	)
 	if err != nil {
 		return nil, err
