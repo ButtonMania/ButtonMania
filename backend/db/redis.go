@@ -226,12 +226,12 @@ func (r *Redis) removeUserDurationFromActiveSessions(
 	remActiveSessionsErr := r.client.ZRem(
 		r.ctx,
 		activeSessionsKey,
-		userID,
+		string(userID),
 	).Err()
 	remSessionTsErr := r.client.ZRem(
 		r.ctx,
 		sessionTsKey,
-		userID,
+		string(userID),
 	).Err()
 	// Remove expired sessions
 	if rand.Intn(cleanupRandChance) == 0 {
