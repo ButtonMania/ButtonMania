@@ -86,9 +86,10 @@ export default class App extends Component<Props, State> {
 			buttonPhase: buttonPhase,
 			buttonType: buttonType,
 			messageText: i18next.t(`${buttonType}DefaultSubtitle`),
-			currentRecordText: i18next.t('currentRecordHeaderText'),
-			currentRecordValue: 0,
-			todaysRecordValue: 0,
+			bestOverallDurationText: i18next.t('currentRecordHeaderText'),
+			bestTodaysDurationText: i18next.t('todaysRecordHeaderText'),
+			bestOverallDurationValue: 0,
+			bestTodaysDurationValue: 0,
 			placeActiveValue: 0,
 			placeLeaderboardValue: 0,
 			countActiveValue: 0,
@@ -228,8 +229,8 @@ export default class App extends Component<Props, State> {
 		this.setState({
 			countActiveValue: stats.countActive,
 			countLeaderboardValue: stats.countLeaderboard,
-			currentRecordValue: stats.bestDuration,
-			todaysRecordValue: stats.todaysRecord,
+			bestOverallDurationValue: stats.bestOverallDuration,
+			bestTodaysDurationValue: stats.bestTodaysDuration,
 		});
 		this.props.webApp.HapticFeedback.impactOccurred('soft')
 	}

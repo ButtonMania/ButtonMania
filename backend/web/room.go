@@ -35,14 +35,19 @@ func NewGameRoom(clientId protocol.ClientID, roomId protocol.RoomID, db *db.DB) 
 func (r *GameRoom) Stats() (protocol.GameRoomStats, error) {
 	countActive, countActiveErr := r.DB.GetUsersCountInActiveSessions(r.ClientID, r.RoomID)
 	countLeaderboard, countLeaderboardErr := r.DB.GetUsersCountInLeaderboard(r.ClientID, r.RoomID)
-	bestDuration, bestDurationErr := r.DB.GetBestDurationInLeaderboard(r.ClientID, r.RoomID)
-	todaysRecord, todaysRecordErr := r.DB.GetTodaysRecordInLeaderboard(r.ClientID, r.RoomID)
-	err := errors.Join(countActiveErr, countLeaderboardErr, bestDurationErr, todaysRecordErr)
+	bestOverallDuration, bestOverallDurationErr := r.DB.GetBestOverallDurationInLeaderboard(r.ClientID, r.RoomID)
+	bestTodaysDuration, bestTodaysDurationErr := r.DB.GetTodaysDurationInLeaderboard(r.ClientID, r.RoomID)
+	err := errors.Join(
+		countActiveErr,
+		countLeaderboardErr,
+		bestOverallDurationErr,
+		bestTodaysDurationErr,
+	)
 	return protocol.NewGameRoomStats(
 		&countActive,
 		&countLeaderboard,
-		&bestDuration,
-		&todaysRecord,
+		&bestOverallDuration,
+		&bestTodaysDuration,
 	), err
 }
 

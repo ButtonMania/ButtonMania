@@ -84,24 +84,24 @@ func (r GameplayRecord) MarshalBinary() ([]byte, error) {
 
 // GameRoomStats represents statistics for a game room.
 type GameRoomStats struct {
-	CountActive      *int64 `json:"countActive,omitempty"`
-	CountLeaderboard *int64 `json:"countLeaderboard,omitempty"`
-	BestDuration     *int64 `json:"bestDuration,omitempty"`
-	TodaysRecord     *int64 `json:"todaysRecord,omitempty"`
+	CountActive         *int64 `json:"countActive,omitempty"`
+	CountLeaderboard    *int64 `json:"countLeaderboard,omitempty"`
+	BestOverallDuration *int64 `json:"bestOverallDuration,omitempty"`
+	BestTodaysDuration  *int64 `json:"bestTodaysDuration,omitempty"`
 }
 
 // NewGameRoomStats creates a new GameRoomStats.
 func NewGameRoomStats(
 	totalCountActive,
 	totalCountLeaderboard,
-	bestDuration *int64,
-	todaysRecord *int64,
+	bestOverallDuration *int64,
+	bestTodaysDuration *int64,
 ) GameRoomStats {
 	return GameRoomStats{
-		CountActive:      totalCountActive,
-		CountLeaderboard: totalCountLeaderboard,
-		BestDuration:     bestDuration,
-		TodaysRecord:     todaysRecord,
+		CountActive:         totalCountActive,
+		CountLeaderboard:    totalCountLeaderboard,
+		BestOverallDuration: bestOverallDuration,
+		BestTodaysDuration:  bestTodaysDuration,
 	}
 }
 

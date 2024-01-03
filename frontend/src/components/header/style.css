@@ -1,17 +1,28 @@
 @keyframes slide {
 
     from,
-    45% {
+    20% {
+        transform: translate(0, -33.33333333333333333333%);
+    }
+
+    25%,
+    40% {
+        transform: translate(0, -66.66666666666666666666%);
+    }
+
+    45%,
+    55% {
+        transform: translate(0, -33.33333333333333333333%);
+    }
+
+    60%,
+    75% {
         transform: translate(0, 0);
     }
 
-    50%,
-    95% {
-        transform: translate(0, -50%);
-    }
-
+    80%,
     to {
-        transform: translate(0, 0);
+        transform: translate(0, -33.33333333333333333333%);
     }
 }
 
@@ -67,7 +78,7 @@
 
 .message_inner {
     animation: slide 10s linear infinite;
-    transform: translate(0, 0);
+    transform: translate(0, -33%);
 }
 
 .idle.newyear .type {

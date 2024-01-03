@@ -154,7 +154,7 @@ func (p *Postgres) getUsersCountInLeaderboard(
 }
 
 // retrieves the best duration achieved by a player in the leaderboard.
-func (p *Postgres) getBestDurationInLeaderboard(
+func (p *Postgres) getBestOverallDurationInLeaderboard(
 	clientId protocol.ClientID,
 	roomId protocol.RoomID,
 ) (int64, error) {
@@ -174,7 +174,7 @@ func (p *Postgres) getBestDurationInLeaderboard(
 }
 
 // retrieves today's best duration from the leaderboard.
-func (p *Postgres) getTodaysRecordInLeaderboard(
+func (p *Postgres) getTodaysDurationInLeaderboard(
 	clientId protocol.ClientID,
 	roomId protocol.RoomID,
 ) (int64, error) {

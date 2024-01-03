@@ -84,16 +84,16 @@ const docTemplate = `{
         "protocol.GameRoomStats": {
             "type": "object",
             "properties": {
-                "bestDuration": {
+                "bestOverallDuration": {
+                    "type": "integer"
+                },
+                "bestTodaysDuration": {
                     "type": "integer"
                 },
                 "countActive": {
                     "type": "integer"
                 },
                 "countLeaderboard": {
-                    "type": "integer"
-                },
-                "todaysRecord": {
                     "type": "integer"
                 }
             }

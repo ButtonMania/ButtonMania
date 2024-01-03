@@ -94,23 +94,23 @@ func (db *DB) GetUsersCountInLeaderboard(
 	)
 }
 
-// GetBestDurationInLeaderboard retrieves the best duration achieved by a player in the leaderboard.
-func (db *DB) GetBestDurationInLeaderboard(
+// GetBestOverallDurationInLeaderboard retrieves the best duration achieved by a player in the leaderboard.
+func (db *DB) GetBestOverallDurationInLeaderboard(
 	clientId protocol.ClientID,
 	roomId protocol.RoomID,
 ) (int64, error) {
-	return db.postgres.getBestDurationInLeaderboard(
+	return db.postgres.getBestOverallDurationInLeaderboard(
 		clientId,
 		roomId,
 	)
 }
 
-// GetTodaysRecordInLeaderboard retrieves today's best duration from  the leaderboard.
-func (db *DB) GetTodaysRecordInLeaderboard(
+// GetTodaysDurationInLeaderboard retrieves today's best duration from  the leaderboard.
+func (db *DB) GetTodaysDurationInLeaderboard(
 	clientId protocol.ClientID,
 	roomId protocol.RoomID,
 ) (int64, error) {
-	return db.postgres.getTodaysRecordInLeaderboard(
+	return db.postgres.getTodaysDurationInLeaderboard(
 		clientId,
 		roomId,
 	)
