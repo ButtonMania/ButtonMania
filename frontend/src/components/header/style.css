@@ -60,9 +60,14 @@
     /* padding-bottom: 0.69rem; */
 }
 
-.message_wrapper,
+.message_inner {
+    display: flex;
+    flex-flow: row wrap;
+}
+
 .record_wrapper,
-.message {
+.message,
+.message_wrapper {
     height: 2.625rem;
 }
 
@@ -71,9 +76,17 @@
     overflow: hidden;
 }
 
+.message {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    vertical-align: middle;
+}
+
 .message,
 .record_wrapper {
     width: 100%;
+    line-height: 1.3rem;
 }
 
 .message_inner {
