@@ -83,7 +83,7 @@ func (w *Web) wsHandler(c *gin.Context) {
 //	@Param		clientId	query		string	true	"Client ID"
 //	@Param		roomId		query		string	true	"Room ID"
 //	@Success	200			{object}	protocol.GameRoomStats
-//	@Router		/api/stats [get]
+//	@Router		/api/room/stats [get]
 func (w *Web) statsHandler(c *gin.Context) {
 	clientIdStr := c.Query("clientId")
 	roomIdStr := c.Query("roomId")

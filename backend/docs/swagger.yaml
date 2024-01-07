@@ -19,7 +19,7 @@ info:
   title: ButtonMania API
   version: "1.0"
 paths:
-  /api/stats:
+  /api/room/stats:
     get:
       parameters:
       - description: Client ID

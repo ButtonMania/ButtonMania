@@ -82,7 +82,7 @@ export class NetworkClient {
     }
 
     public fetchRoomStats(buttonType: ButtonType): void {
-        axios.get(`${this.httpEndpoint}/stats`, {
+        axios.get(`${this.httpEndpoint}/room/stats`, {
             params: { clientId: this.clientId, roomId: buttonType }
         }).then(response => {
             let raw: any = response.data as object;

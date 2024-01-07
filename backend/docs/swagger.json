@@ -11,7 +11,7 @@
     "host": "buttonmania.win",
     "basePath": "/",
     "paths": {
-        "/api/stats": {
+        "/api/room/stats": {
             "get": {
                 "produces": [
                     "application/json"
