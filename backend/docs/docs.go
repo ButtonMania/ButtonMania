@@ -179,6 +179,12 @@ const docTemplate = `{
                     },
                     {
                         "type": "string",
+                        "description": "User payload",
+                        "name": "payload",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
                         "description": "Telegram init data",
                         "name": "initData",
                         "in": "query"
@@ -197,6 +203,12 @@ const docTemplate = `{
                 },
                 "bestTodaysDuration": {
                     "type": "integer"
+                },
+                "bestUsersPayloads": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
                 },
                 "countActive": {
                     "type": "integer"

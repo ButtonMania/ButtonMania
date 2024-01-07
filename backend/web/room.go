@@ -19,6 +19,10 @@ type GameRoom struct {
 	closed   bool
 }
 
+const (
+	userPayloadCountInStats = 3
+)
+
 // NewGameRoom creates a new GameRoom instance.
 func NewGameRoom(
 	clientId protocol.ClientID,
@@ -43,17 +47,20 @@ func (r *GameRoom) Stats() (protocol.GameRoomStats, error) {
 	countLeaderboard, countLeaderboardErr := r.DB.GetUsersCountInLeaderboard(r.ClientID, r.RoomID)
 	bestOverallDuration, bestOverallDurationErr := r.DB.GetBestOverallDurationInLeaderboard(r.ClientID, r.RoomID)
 	bestTodaysDuration, bestTodaysDurationErr := r.DB.GetTodaysDurationInLeaderboard(r.ClientID, r.RoomID)
+	bestUsersPayloads, bestUsersPayloadsErr := r.DB.GetBestUsersPayloads(r.ClientID, r.RoomID, userPayloadCountInStats)
 	err := errors.Join(
 		countActiveErr,
 		countLeaderboardErr,
 		bestOverallDurationErr,
 		bestTodaysDurationErr,
+		bestUsersPayloadsErr,
 	)
 	return protocol.NewGameRoomStats(
 		&countActive,
 		&countLeaderboard,
 		&bestOverallDuration,
 		&bestTodaysDuration,
+		&bestUsersPayloads,
 	), err
 }
 
@@ -76,11 +83,13 @@ func (r *GameRoom) RemoveGameSession(userID protocol.UserID) {
 // MaintainGameSession creates and maintains a game session for a user.
 func (r *GameRoom) MaintainGameSession(
 	userID protocol.UserID,
+	UserPayload protocol.UserPayload,
 	UserLocale protocol.UserLocale,
 	ws *websocket.Conn,
 ) error {
 	session := NewGameSession(
 		userID,
+		UserPayload,
 		UserLocale,
 		r,
 		ws,

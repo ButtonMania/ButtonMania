@@ -6,6 +6,10 @@ definitions:
         type: integer
       bestTodaysDuration:
         type: integer
+      bestUsersPayloads:
+        items:
+          type: string
+        type: array
       countActive:
         type: integer
       countLeaderboard:
@@ -124,6 +128,10 @@ paths:
       - description: User locale
         in: query
         name: locale
+        type: string
+      - description: User payload
+        in: query
+        name: payload
         type: string
       - description: Telegram init data
         in: query

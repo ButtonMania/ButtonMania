@@ -16,21 +16,22 @@ import (
 
 type RedisKey string
 
-const (
-	// RedisKey represents Redis custom keys.
-	RedisKeyActiveSessions RedisKey = "sessions"
-	RedisKeySessionTs      RedisKey = "sessionts"
-	RedisKeyCustomRooms    RedisKey = "rooms"
-	// Session ttl handling constants
-	cleanupRandChance = 5
-	sessionTtlSeconds = 40
-)
-
 // Redis represents the redis client.
 type Redis struct {
 	ctx    context.Context
 	client *redis.Client
 }
+
+const (
+	// RedisKey represents Redis custom keys.
+	RedisKeyActiveSessions RedisKey = "sessions"
+	RedisKeySessionTs      RedisKey = "sessionts"
+	RedisKeyCustomRooms    RedisKey = "rooms"
+	RedisKeyPayloads       RedisKey = "payloads"
+	// Session ttl handling constants
+	cleanupRandChance = 5
+	sessionTtlSeconds = 40
+)
 
 // NewRedis creates a new redis instance.
 func NewRedis(ctx context.Context) (*Redis, error) {
@@ -248,6 +249,94 @@ func (r *Redis) removeUserDurationFromActiveSessions(
 		remActiveSessionsErr,
 		remSessionTsErr,
 	)
+}
+
+// get list of best scored users payloads for gived room and client id's
+func (r *Redis) getBestUsersPayloads(
+	clientId protocol.ClientID,
+	roomId protocol.RoomID,
+	count int64,
+) ([]protocol.UserPayload, error) {
+	payloads := make([]protocol.UserPayload, 0)
+	activeSessionsKey := fmt.Sprintf(
+		"%s:%s:%s",
+		clientId,
+		RedisKeyActiveSessions,
+		roomId,
+	)
+	payloadsKey := fmt.Sprintf(
+		"%s:%s:%s",
+		clientId,
+		RedisKeyPayloads,
+		roomId,
+	)
+	// Get best scored users
+	users, zRangeErr := r.client.ZRange(
+		r.ctx,
+		activeSessionsKey,
+		0,
+		count,
+	).Result()
+	payloadsStr, hMGetErr := r.client.HMGet(
+		r.ctx,
+		payloadsKey,
+		users...,
+	).Result()
+	for _, i := range payloadsStr {
+		if i == nil {
+			continue
+		}
+		payloads = append(payloads, protocol.UserPayload(fmt.Sprintf("%v", i)))
+	}
+	return payloads, errors.Join(zRangeErr, hMGetErr)
+}
+
+// add user payload to set of given client and room id's
+func (r *Redis) addUserPayload(
+	clientId protocol.ClientID,
+	roomId protocol.RoomID,
+	userID protocol.UserID,
+	payload protocol.UserPayload,
+) error {
+	var err error
+	userIdStr := string(userID)
+	payloadStr := string(payload)
+	payloadsKey := fmt.Sprintf(
+		"%s:%s:%s",
+		clientId,
+		RedisKeyPayloads,
+		roomId,
+	)
+	_, err = r.client.HSet(
+		r.ctx,
+		payloadsKey,
+		userIdStr,
+		payloadStr,
+	).Result()
+	return err
+}
+
+// remove user payload from set of given client and room id's
+func (r *Redis) removeUserPayload(
+	clientId protocol.ClientID,
+	roomId protocol.RoomID,
+	userID protocol.UserID,
+) error {
+	var err error
+	userIdStr := string(userID)
+	payloadsKey := fmt.Sprintf(
+		"%s:%s:%s",
+		clientId,
+		RedisKeyPayloads,
+		roomId,
+	)
+	// Remove record
+	_, err = r.client.HDel(
+		r.ctx,
+		payloadsKey,
+		userIdStr,
+	).Result()
+	return err
 }
 
 // list custom game rooms

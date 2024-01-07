@@ -41,6 +41,7 @@ func (w *Web) parseTgInitData(initDataStr string) (*initdata.InitData, error) {
 //	@Param		roomId		query	string	true	"Room ID"
 //	@Param		userId		query	string	false	"User ID"
 //	@Param		locale		query	string	false	"User locale"
+//	@Param		payload		query	string	false	"User payload"
 //	@Param		initData	query	string	false	"Telegram init data"
 //	@Router		/ws [get]
 func (w *Web) wsHandler(c *gin.Context) {
@@ -48,6 +49,7 @@ func (w *Web) wsHandler(c *gin.Context) {
 	roomIdStr := c.Query("roomId")
 	userIdStr := c.Query("userId")
 	localeStr := c.Query("locale")
+	payloadStr := c.Query("payload")
 	initDataStr := c.Query("initData")
 
 	// Extract parameters from telegram init data
@@ -73,6 +75,7 @@ func (w *Web) wsHandler(c *gin.Context) {
 
 	// Convert incoming paramters
 	userID := protocol.UserID(userIdStr)
+	payload := protocol.UserPayload(payloadStr)
 	locale := protocol.NewUserLocale(localeStr)
 	clientId := protocol.ClientID(clientIdStr)
 	roomId := protocol.RoomID(roomIdStr)
@@ -97,7 +100,7 @@ func (w *Web) wsHandler(c *gin.Context) {
 	}
 	defer ws.Close()
 
-	if err := room.MaintainGameSession(userID, locale, ws); err != nil {
+	if err := room.MaintainGameSession(userID, payload, locale, ws); err != nil {
 		log.Println("Error occurred while maintaining the game session:", err)
 		return
 	}

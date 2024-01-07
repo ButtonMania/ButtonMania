@@ -31,6 +31,7 @@ type GameSession struct {
 	ctx         *protocol.GameplayContext
 	ws          *websocket.Conn
 	userID      protocol.UserID
+	payload     protocol.UserPayload
 	locale      protocol.UserLocale
 	room        *GameRoom
 	lastMsgTime int64
@@ -39,6 +40,7 @@ type GameSession struct {
 // NewGameSession creates a new GameSession instance.
 func NewGameSession(
 	userID protocol.UserID,
+	UserPayload protocol.UserPayload,
 	UserLocale protocol.UserLocale,
 	room *GameRoom,
 	ws *websocket.Conn,
@@ -47,6 +49,7 @@ func NewGameSession(
 		ctx:         nil,
 		ws:          ws,
 		userID:      userID,
+		payload:     UserPayload,
 		locale:      UserLocale,
 		room:        room,
 		lastMsgTime: time.Now().Unix(),
@@ -281,10 +284,16 @@ func (s *GameSession) closeGameSession() error {
 			s.userID,
 			*gameplayCtx.Timestamp,
 		)
+		remUserPayloadErr := s.room.DB.RemoveUserPayload(
+			clientId,
+			roodId,
+			s.userID,
+		)
 		err = errors.Join(
 			err,
 			addRecordToLeaderboardErr,
 			remUserDurationFromActiveSessionsErr,
+			remUserPayloadErr,
 		)
 		gameRecordPtr = &record
 	}
@@ -311,10 +320,10 @@ func (s *GameSession) startGameSession() (*protocol.GameplayContext, error) {
 
 	gameplayCtx := protocol.NewGameplayContext()
 	clientId := s.room.ClientID
-	roodId := s.room.RoomID
+	roomId := s.room.RoomID
 	err := s.room.DB.SetUserDurationToActiveSessions(
 		clientId,
-		roodId,
+		roomId,
 		s.userID,
 		*gameplayCtx.Duration,
 		*gameplayCtx.Timestamp,
@@ -322,7 +331,19 @@ func (s *GameSession) startGameSession() (*protocol.GameplayContext, error) {
 	if err != nil {
 		return nil, err
 	}
-
+	// Add payload to database
+	if len(s.payload) > 0 {
+		err = s.room.DB.AddUserPayload(
+			clientId,
+			roomId,
+			s.userID,
+			s.payload,
+		)
+		if err != nil {
+			return nil, err
+		}
+	}
+	// Add session to room
 	s.ctx = &gameplayCtx
 	s.room.AddGameSession(s.userID, s)
 

@@ -202,3 +202,44 @@ func (db *DB) RemoveCustomGameRoom(
 		userID,
 	)
 }
+
+// GetBestUsersPayloads get payloads from redis
+func (db *DB) GetBestUsersPayloads(
+	clientId protocol.ClientID,
+	roomId protocol.RoomID,
+	count int64,
+) ([]protocol.UserPayload, error) {
+	return db.redis.getBestUsersPayloads(
+		clientId,
+		roomId,
+		count,
+	)
+}
+
+// AddUserPayload add payload to redis
+func (db *DB) AddUserPayload(
+	clientId protocol.ClientID,
+	roomId protocol.RoomID,
+	userID protocol.UserID,
+	payload protocol.UserPayload,
+) error {
+	return db.redis.addUserPayload(
+		clientId,
+		roomId,
+		userID,
+		payload,
+	)
+}
+
+// RemoveUserPayload remove payload from redis
+func (db *DB) RemoveUserPayload(
+	clientId protocol.ClientID,
+	roomId protocol.RoomID,
+	userID protocol.UserID,
+) error {
+	return db.redis.removeUserPayload(
+		clientId,
+		roomId,
+		userID,
+	)
+}

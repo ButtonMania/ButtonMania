@@ -37,5 +37,6 @@ export class RoomStats {
     constructor(public readonly countActive: number,
         public readonly countLeaderboard: number,
         public readonly bestOverallDuration: number,
-        public readonly bestTodaysDuration: number) { }
+        public readonly bestTodaysDuration: number,
+        public readonly bestUsersPayloads: string[]) { }
 }

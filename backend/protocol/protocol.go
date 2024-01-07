@@ -10,6 +10,7 @@ import (
 type ButtonPhase string
 type UserLocale string
 type UserID string
+type UserPayload string
 type MessageType int
 type ClientID string
 type RoomID string
@@ -87,24 +88,27 @@ func (r GameplayRecord) MarshalBinary() ([]byte, error) {
 
 // GameRoomStats represents statistics for a game room.
 type GameRoomStats struct {
-	CountActive         *int64 `json:"countActive,omitempty"`
-	CountLeaderboard    *int64 `json:"countLeaderboard,omitempty"`
-	BestOverallDuration *int64 `json:"bestOverallDuration,omitempty"`
-	BestTodaysDuration  *int64 `json:"bestTodaysDuration,omitempty"`
+	CountActive         *int64         `json:"countActive,omitempty"`
+	CountLeaderboard    *int64         `json:"countLeaderboard,omitempty"`
+	BestOverallDuration *int64         `json:"bestOverallDuration,omitempty"`
+	BestTodaysDuration  *int64         `json:"bestTodaysDuration,omitempty"`
+	BestUsersPayloads   *[]UserPayload `json:"bestUsersPayloads,omitempty"`
 }
 
 // NewGameRoomStats creates a new GameRoomStats.
 func NewGameRoomStats(
-	totalCountActive,
-	totalCountLeaderboard,
+	totalCountActive *int64,
+	totalCountLeaderboard *int64,
 	bestOverallDuration *int64,
 	bestTodaysDuration *int64,
+	bestUsersPayloads *[]UserPayload,
 ) GameRoomStats {
 	return GameRoomStats{
 		CountActive:         totalCountActive,
 		CountLeaderboard:    totalCountLeaderboard,
 		BestOverallDuration: bestOverallDuration,
 		BestTodaysDuration:  bestTodaysDuration,
+		BestUsersPayloads:   bestUsersPayloads,
 	}
 }
 
