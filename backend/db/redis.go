@@ -278,13 +278,13 @@ func (r *Redis) getBestUsersPayloads(
 		0,
 		count,
 	).Result()
-	if err != nil && len(users) > 0 {
+	if err == nil && len(users) > 0 {
 		payloadsStr, err := r.client.HMGet(
 			r.ctx,
 			payloadsKey,
 			users...,
 		).Result()
-		if err != nil {
+		if err == nil {
 			for _, i := range payloadsStr {
 				if i == nil {
 					continue
