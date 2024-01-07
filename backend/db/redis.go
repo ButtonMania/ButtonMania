@@ -257,6 +257,7 @@ func (r *Redis) getBestUsersPayloads(
 	roomId protocol.RoomID,
 	count int64,
 ) ([]protocol.UserPayload, error) {
+	var err error
 	payloads := make([]protocol.UserPayload, 0)
 	activeSessionsKey := fmt.Sprintf(
 		"%s:%s:%s",
@@ -271,24 +272,28 @@ func (r *Redis) getBestUsersPayloads(
 		roomId,
 	)
 	// Get best scored users
-	users, zRangeErr := r.client.ZRange(
+	users, err := r.client.ZRange(
 		r.ctx,
 		activeSessionsKey,
 		0,
 		count,
 	).Result()
-	payloadsStr, hMGetErr := r.client.HMGet(
-		r.ctx,
-		payloadsKey,
-		users...,
-	).Result()
-	for _, i := range payloadsStr {
-		if i == nil {
-			continue
+	if err != nil && len(users) > 0 {
+		payloadsStr, err := r.client.HMGet(
+			r.ctx,
+			payloadsKey,
+			users...,
+		).Result()
+		if err != nil {
+			for _, i := range payloadsStr {
+				if i == nil {
+					continue
+				}
+				payloads = append(payloads, protocol.UserPayload(fmt.Sprintf("%v", i)))
+			}
 		}
-		payloads = append(payloads, protocol.UserPayload(fmt.Sprintf("%v", i)))
 	}
-	return payloads, errors.Join(zRangeErr, hMGetErr)
+	return payloads, err
 }
 
 // add user payload to set of given client and room id's
