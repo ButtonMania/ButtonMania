@@ -18,12 +18,79 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
+        "/api/room/create": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "summary": "Create game room",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Client ID",
+                        "name": "clientId",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Room ID",
+                        "name": "roomId",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "ok"
+                    },
+                    "400": {
+                        "description": "Room exists"
+                    }
+                }
+            }
+        },
+        "/api/room/delete": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "summary": "Delete game room",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Client ID",
+                        "name": "clientId",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Room ID",
+                        "name": "roomId",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "ok"
+                    },
+                    "400": {
+                        "description": "Room cannot be deleted"
+                    },
+                    "404": {
+                        "description": "Room not found"
+                    }
+                }
+            }
+        },
         "/api/room/stats": {
             "get": {
                 "produces": [
                     "application/json"
                 ],
-                "summary": "Handles API requests for getting room stats",
+                "summary": "Get room stats",
                 "parameters": [
                     {
                         "type": "string",
@@ -46,6 +113,12 @@ const docTemplate = `{
                         "schema": {
                             "$ref": "#/definitions/protocol.GameRoomStats"
                         }
+                    },
+                    "400": {
+                        "description": "Room id is too long"
+                    },
+                    "404": {
+                        "description": "Room not found"
                     }
                 }
             }

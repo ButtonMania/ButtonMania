@@ -16,19 +16,25 @@ type GameRoom struct {
 	MsgLoc   *localization.MessagesLocalization
 	DB       *db.DB
 	sessions map[protocol.UserID]*GameSession
+	closed   bool
 }
 
 // NewGameRoom creates a new GameRoom instance.
-func NewGameRoom(clientId protocol.ClientID, roomId protocol.RoomID, db *db.DB) (*GameRoom, error) {
+func NewGameRoom(
+	clientId protocol.ClientID,
+	roomId protocol.RoomID,
+	db *db.DB,
+	msgLoc *localization.MessagesLocalization,
+) *GameRoom {
 	sessions := make(map[protocol.UserID]*GameSession)
-	msgLoc, err := localization.NewMessagesLocalization(clientId, roomId)
 	return &GameRoom{
 		ClientID: clientId,
 		RoomID:   roomId,
 		MsgLoc:   msgLoc,
 		DB:       db,
 		sessions: sessions,
-	}, err
+		closed:   false,
+	}
 }
 
 // Stats returns the statistics for the game room.
@@ -77,6 +83,7 @@ func (r *GameRoom) MaintainGameSession(
 		userID,
 		UserLocale,
 		r,
+		ws,
 	)
-	return session.MaintainGameSession(ws)
+	return session.MaintainGameSession()
 }

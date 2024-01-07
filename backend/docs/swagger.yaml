@@ -19,6 +19,50 @@ info:
   title: ButtonMania API
   version: "1.0"
 paths:
+  /api/room/create:
+    get:
+      parameters:
+      - description: Client ID
+        in: query
+        name: clientId
+        required: true
+        type: string
+      - description: Room ID
+        in: query
+        name: roomId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: ok
+        "400":
+          description: Room exists
+      summary: Create game room
+  /api/room/delete:
+    get:
+      parameters:
+      - description: Client ID
+        in: query
+        name: clientId
+        required: true
+        type: string
+      - description: Room ID
+        in: query
+        name: roomId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: ok
+        "400":
+          description: Room cannot be deleted
+        "404":
+          description: Room not found
+      summary: Delete game room
   /api/room/stats:
     get:
       parameters:
@@ -39,7 +83,11 @@ paths:
           description: OK
           schema:
             $ref: '#/definitions/protocol.GameRoomStats'
-      summary: Handles API requests for getting room stats
+        "400":
+          description: Room id is too long
+        "404":
+          description: Room not found
+      summary: Get room stats
   /ws:
     get:
       parameters:

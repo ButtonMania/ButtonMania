@@ -28,10 +28,11 @@ var (
 
 // GameSession represents a user's game session.
 type GameSession struct {
+	ctx         *protocol.GameplayContext
+	ws          *websocket.Conn
 	userID      protocol.UserID
 	locale      protocol.UserLocale
 	room        *GameRoom
-	ctx         *protocol.GameplayContext
 	lastMsgTime int64
 }
 
@@ -40,12 +41,14 @@ func NewGameSession(
 	userID protocol.UserID,
 	UserLocale protocol.UserLocale,
 	room *GameRoom,
+	ws *websocket.Conn,
 ) GameSession {
 	return GameSession{
+		ctx:         nil,
+		ws:          ws,
 		userID:      userID,
 		locale:      UserLocale,
 		room:        room,
-		ctx:         nil,
 		lastMsgTime: time.Now().Unix(),
 	}
 }
@@ -99,7 +102,6 @@ func (s *GameSession) shouldSendNewRandomMessage() bool {
 // gameplayUpdate creates a gameplay update message.
 func (s *GameSession) gameplayUpdate(
 	gameplayCtx *protocol.GameplayContext,
-	ws *websocket.Conn,
 ) protocol.GameplayMessage {
 	var msg *string
 	var placeInActiveSessionsPtr *int64
@@ -112,7 +114,7 @@ func (s *GameSession) gameplayUpdate(
 	clientId := s.room.ClientID
 	roodId := s.room.RoomID
 
-	if s.shouldSendNewRandomMessage() {
+	if msgLoc != nil && s.shouldSendNewRandomMessage() {
 		msg = msgLoc.RandomLocalizedMessage(s.locale)
 		s.lastMsgTime = time.Now().Unix()
 	}
@@ -140,7 +142,6 @@ func (s *GameSession) gameplayUpdate(
 // gameplayRecord creates a gameplay record message.
 func (s *GameSession) gameplayRecord(
 	gameplayRecord *protocol.GameplayRecord,
-	ws *websocket.Conn,
 ) protocol.GameplayMessage {
 	var placeInActiveSessionsPtr *int64
 	var placeInLeaderboardPtr *int64
@@ -177,7 +178,6 @@ func (s *GameSession) gameplayRecord(
 // gameplayError creates a gameplay error message.
 func (s *GameSession) gameplayError(
 	gameplayErr *protocol.GameplayError,
-	ws *websocket.Conn,
 ) protocol.GameplayMessage {
 	return protocol.NewGameplayMessage(
 		nil,
@@ -198,25 +198,23 @@ func (s *GameSession) writeNetworkMessage(
 	gameplayCtx *protocol.GameplayContext,
 	gameplayRecord *protocol.GameplayRecord,
 	gameplayErr *protocol.GameplayError,
-	ws *websocket.Conn,
 ) error {
 	// Create a new gameplay message and send it to the client as JSON
 	var msg protocol.GameplayMessage
 	if gameplayErr != nil {
-		msg = s.gameplayError(gameplayErr, ws)
+		msg = s.gameplayError(gameplayErr)
 	} else if gameplayRecord != nil {
-		msg = s.gameplayRecord(gameplayRecord, ws)
+		msg = s.gameplayRecord(gameplayRecord)
 	} else if gameplayCtx != nil {
-		msg = s.gameplayUpdate(gameplayCtx, ws)
+		msg = s.gameplayUpdate(gameplayCtx)
 	}
-	return ws.WriteJSON(msg)
+	return s.ws.WriteJSON(msg)
 }
 
 // updateGameSession updates the game session state.
 func (s *GameSession) updateGameSession(
 	gameplayCtx *protocol.GameplayContext,
 	GameplayMessageCtx *protocol.GameplayContext,
-	ws *websocket.Conn,
 ) (*protocol.GameplayContext, error) {
 	var err error
 	nowTimestamp := time.Now().Unix()
@@ -253,17 +251,14 @@ func (s *GameSession) updateGameSession(
 			GameplayMessageCtx,
 			nil,
 			nil,
-			ws,
 		)
 	}
 	return GameplayMessageCtx, err
 }
 
 // closeGameSession closes the game session.
-func (s *GameSession) closeGameSession(
-	err error,
-	ws *websocket.Conn,
-) (*protocol.GameplayContext, error) {
+func (s *GameSession) closeGameSession() error {
+	var err error
 	var gameRecordPtr *protocol.GameplayRecord
 	var gameErrorPtr *protocol.GameplayError
 
@@ -303,14 +298,13 @@ func (s *GameSession) closeGameSession(
 		nil,
 		gameRecordPtr,
 		gameErrorPtr,
-		ws,
 	)
 
-	return gameplayCtx, err
+	return err
 }
 
 // startGameSession starts a new game session.
-func (s *GameSession) startGameSession(ws *websocket.Conn) (*protocol.GameplayContext, error) {
+func (s *GameSession) startGameSession() (*protocol.GameplayContext, error) {
 	if s.room.HasGameSession(s.userID) {
 		return nil, ErrGameSessionAlreadyExists
 	}
@@ -336,50 +330,40 @@ func (s *GameSession) startGameSession(ws *websocket.Conn) (*protocol.GameplayCo
 		&gameplayCtx,
 		nil,
 		nil,
-		ws,
 	)
 
 	return &gameplayCtx, err
 }
 
 // MaintainGameSession maintains the game session for the user.
-func (s *GameSession) MaintainGameSession(ws *websocket.Conn) error {
+func (s *GameSession) MaintainGameSession() error {
 	var err error
 	var updatedGameplayCtx *protocol.GameplayContext
 
-	s.ctx, err = s.startGameSession(ws)
+	s.ctx, err = s.startGameSession()
 	if err != nil {
 		gameError := protocol.NewGameplayError(err.Error())
 		err_ := s.writeNetworkMessage(
 			nil,
 			nil,
 			&gameError,
-			ws,
 		)
-		return errors.Join(err, err_)
-	}
-
-	defer func() {
-		defer s.closeGameSession(
-			err,
-			ws,
-		)
-	}()
-
-	for {
-		if err_ := ws.ReadJSON(&updatedGameplayCtx); err_ != nil {
-			err = errors.Join(err, ErrFailedToReadGameSessionUpdate)
-			break
-		}
-		s.ctx, err = s.updateGameSession(
-			s.ctx,
-			updatedGameplayCtx,
-			ws,
-		)
-		if err != nil || s.ctx.ButtonPhase == protocol.Release {
-			break
+		err = errors.Join(err, err_)
+	} else {
+		for {
+			if err_ := s.ws.ReadJSON(&updatedGameplayCtx); err_ != nil {
+				err = errors.Join(err, ErrFailedToReadGameSessionUpdate)
+				break
+			}
+			s.ctx, err = s.updateGameSession(
+				s.ctx,
+				updatedGameplayCtx,
+			)
+			if err != nil || s.ctx.ButtonPhase == protocol.Release || s.room.closed {
+				break
+			}
 		}
 	}
 
-	return err
+	return errors.Join(err, s.closeGameSession())
 }

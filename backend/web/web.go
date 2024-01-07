@@ -8,6 +8,7 @@ import (
 
 	"buttonmania.win/conf"
 	"buttonmania.win/db"
+	"buttonmania.win/localization"
 	"buttonmania.win/protocol"
 	"github.com/barweiss/go-tuple"
 	"github.com/gin-contrib/cors"
@@ -46,6 +47,7 @@ type Web struct {
 	engine   *gin.Engine
 	store    sessions.Store
 	upgrader websocket.Upgrader
+	clients  []protocol.ClientID
 	rooms    map[tuple.T2[protocol.ClientID, protocol.RoomID]]*GameRoom
 }
 
@@ -59,6 +61,7 @@ func NewWeb(ctx context.Context, conf conf.Conf, engine *gin.Engine, db *db.DB, 
 	// Initialize router, session storage
 	store := cookie.NewStore([]byte(sessionSecret))
 	rooms := make(map[tuple.T2[protocol.ClientID, protocol.RoomID]]*GameRoom)
+	clients := make([]protocol.ClientID, 0)
 
 	// Initialize WebSocket upgrader
 	originChecker := glob.MustCompile(allowedOrigins)
@@ -85,12 +88,14 @@ func NewWeb(ctx context.Context, conf conf.Conf, engine *gin.Engine, db *db.DB, 
 	// Initialize game rooms
 	for _, c := range conf.Clients {
 		for _, r := range c.Rooms {
-			room, err := NewGameRoom(c.ClientId, r, db)
+			msgLoc, err := localization.NewMessagesLocalization(c.ClientId, r)
 			if err != nil {
 				return nil, err
 			}
-			rooms[tuple.New2(c.ClientId, r)] = room
+			roomKey := tuple.New2(c.ClientId, r)
+			rooms[roomKey] = NewGameRoom(c.ClientId, r, db, msgLoc)
 		}
+		clients = append(clients, c.ClientId)
 	}
 
 	// Apply middlewares and other router parameters
@@ -121,6 +126,7 @@ func NewWeb(ctx context.Context, conf conf.Conf, engine *gin.Engine, db *db.DB, 
 		engine:   engine,
 		store:    store,
 		upgrader: upgrader,
+		clients:  clients,
 		rooms:    rooms,
 	}, nil
 }
@@ -140,6 +146,8 @@ func (w *Web) Run() error {
 
 	w.engine.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 	w.engine.GET("/ws", w.wsHandler)
+	w.engine.GET("/api/room/create", w.createHandler)
+	w.engine.GET("/api/room/delete", w.deleteHandler)
 	w.engine.GET("/api/room/stats", w.statsHandler)
 
 	if len(serverTLSCert) > 0 && len(serverTLSKey) > 0 {
