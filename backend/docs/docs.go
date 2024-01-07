@@ -38,6 +38,18 @@ const docTemplate = `{
                         "name": "roomId",
                         "in": "query",
                         "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "User ID",
+                        "name": "userId",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Telegram init data",
+                        "name": "initData",
+                        "in": "query"
                     }
                 ],
                 "responses": {
@@ -70,6 +82,18 @@ const docTemplate = `{
                         "name": "roomId",
                         "in": "query",
                         "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "User ID",
+                        "name": "userId",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Telegram init data",
+                        "name": "initData",
+                        "in": "query"
                     }
                 ],
                 "responses": {
