@@ -101,10 +101,17 @@ paths:
         name: roomId
         required: true
         type: string
+      - description: User ID
+        in: query
+        name: userId
+        type: string
+      - description: User locale
+        in: query
+        name: locale
+        type: string
       - description: Telegram init data
         in: query
         name: initData
-        required: true
         type: string
       responses: {}
       summary: Handles WebSocket connections

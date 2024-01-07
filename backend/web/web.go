@@ -48,7 +48,7 @@ type Web struct {
 	store    sessions.Store
 	upgrader websocket.Upgrader
 	clients  []protocol.ClientID
-	rooms    map[tuple.T2[protocol.ClientID, protocol.RoomID]]*GameRoom
+	rooms    map[protocol.RoomKey]*GameRoom
 }
 
 // NewWeb creates a new Web instance.
@@ -60,7 +60,7 @@ func NewWeb(ctx context.Context, conf conf.Conf, engine *gin.Engine, db *db.DB, 
 
 	// Initialize router, session storage
 	store := cookie.NewStore([]byte(sessionSecret))
-	rooms := make(map[tuple.T2[protocol.ClientID, protocol.RoomID]]*GameRoom)
+	rooms := make(map[protocol.RoomKey]*GameRoom)
 	clients := make([]protocol.ClientID, 0)
 
 	// Initialize WebSocket upgrader
@@ -85,17 +85,23 @@ func NewWeb(ctx context.Context, conf conf.Conf, engine *gin.Engine, db *db.DB, 
 		return originChecker.Match(origin)
 	}
 
-	// Initialize game rooms
+	// Initialize predefined game rooms
 	for _, c := range conf.Clients {
 		for _, r := range c.Rooms {
 			msgLoc, err := localization.NewMessagesLocalization(c.ClientId, r)
 			if err != nil {
 				return nil, err
 			}
-			roomKey := tuple.New2(c.ClientId, r)
+			roomKey := protocol.RoomKey(tuple.New2(c.ClientId, r))
 			rooms[roomKey] = NewGameRoom(c.ClientId, r, db, msgLoc)
 		}
 		clients = append(clients, c.ClientId)
+	}
+
+	// Initialize user created game rooms
+	customRooms, err := db.ListCustomGameRooms()
+	for _, roomKey := range customRooms {
+		rooms[roomKey] = NewGameRoom(roomKey.V1, roomKey.V2, db, nil)
 	}
 
 	// Apply middlewares and other router parameters
@@ -128,7 +134,7 @@ func NewWeb(ctx context.Context, conf conf.Conf, engine *gin.Engine, db *db.DB, 
 		upgrader: upgrader,
 		clients:  clients,
 		rooms:    rooms,
-	}, nil
+	}, err
 }
 
 // Run

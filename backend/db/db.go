@@ -171,3 +171,34 @@ func (db *DB) RemoveUserDurationFromActiveSessions(
 		timestamp,
 	)
 }
+
+// ListCustomGameRooms returs identifiers of custom game rooms
+func (db *DB) ListCustomGameRooms() ([]protocol.RoomKey, error) {
+	return db.redis.listCustomGameRooms()
+}
+
+// AddCustomGameRoom add new custom game room.
+func (db *DB) AddCustomGameRoom(
+	clientId protocol.ClientID,
+	roomId protocol.RoomID,
+	userID protocol.UserID,
+) error {
+	return db.redis.createCustomRoom(
+		clientId,
+		roomId,
+		userID,
+	)
+}
+
+// AddCustomGameRoom add new custom game room.
+func (db *DB) RemoveCustomGameRoom(
+	clientId protocol.ClientID,
+	roomId protocol.RoomID,
+	userID protocol.UserID,
+) error {
+	return db.redis.removeCustomRoom(
+		clientId,
+		roomId,
+		userID,
+	)
+}

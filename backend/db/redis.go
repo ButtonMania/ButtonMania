@@ -7,8 +7,10 @@ import (
 	"fmt"
 	"math/rand"
 	"strconv"
+	"strings"
 
 	"buttonmania.win/protocol"
+	"github.com/barweiss/go-tuple"
 	"github.com/go-redis/redis/v8"
 )
 
@@ -18,6 +20,7 @@ const (
 	// RedisKey represents Redis custom keys.
 	RedisKeyActiveSessions RedisKey = "sessions"
 	RedisKeySessionTs      RedisKey = "sessionts"
+	RedisKeyCustomRooms    RedisKey = "rooms"
 	// Session ttl handling constants
 	cleanupRandChance = 5
 	sessionTtlSeconds = 40
@@ -245,4 +248,106 @@ func (r *Redis) removeUserDurationFromActiveSessions(
 		remActiveSessionsErr,
 		remSessionTsErr,
 	)
+}
+
+// list custom game rooms
+func (r *Redis) listCustomGameRooms() ([]protocol.RoomKey, error) {
+	var err error
+	var roomList []protocol.RoomKey
+	// Scan db and get all room hash sets
+	prefix := fmt.Sprintf("*:%s", RedisKeyCustomRooms)
+	trimStr := fmt.Sprintf(":%s", RedisKeyCustomRooms)
+	iter := r.client.Scan(r.ctx, 0, prefix, 0).Iterator()
+	for iter.Next(r.ctx) {
+		// Extract client id from key
+		keyStr := strings.TrimSuffix(iter.Val(), trimStr)
+		keySplit := strings.Split(keyStr, ":")
+		if len(keySplit) != 1 {
+			err = fmt.Errorf("invalid key found: %s", keyStr)
+			break
+		}
+		// Iterate over rooms in hash sets
+		roomIter := r.client.HScan(r.ctx, iter.Val(), 0, "", 0).Iterator()
+		for roomIter.Next(r.ctx) {
+			// Add room key to slice
+			clientId := protocol.ClientID(keySplit[0])
+			roomId := protocol.RoomID(roomIter.Val())
+			key := protocol.RoomKey(tuple.New2(clientId, roomId))
+			roomList = append(roomList, key)
+		}
+	}
+	return roomList, err
+}
+
+// add new user's custom game room.
+func (r *Redis) createCustomRoom(
+	clientId protocol.ClientID,
+	roomId protocol.RoomID,
+	userID protocol.UserID,
+) error {
+	var err error
+	roomIdStr := string(roomId)
+	userIdStr := string(userID)
+	customRoomKey := fmt.Sprintf(
+		"%s:%s",
+		clientId,
+		RedisKeyCustomRooms,
+	)
+	// Check if room already exist
+	roomInRedis, err := r.client.HExists(
+		r.ctx,
+		customRoomKey,
+		roomIdStr,
+	).Result()
+	if roomInRedis {
+		err = errors.New("room exist")
+	}
+	// Create new room
+	if err == nil {
+		_, err = r.client.HSet(
+			r.ctx,
+			customRoomKey,
+			roomIdStr,
+			userIdStr,
+		).Result()
+	}
+	return err
+}
+
+// remove user's custom game room.
+func (r *Redis) removeCustomRoom(
+	clientId protocol.ClientID,
+	roomId protocol.RoomID,
+	userID protocol.UserID,
+) error {
+	var err error
+	roomIdStr := string(roomId)
+	userIdStr := string(userID)
+	customRoomKey := fmt.Sprintf(
+		"%s:%s",
+		clientId,
+		RedisKeyCustomRooms,
+	)
+	// Check if room exist and belongs to user
+	roomInRedis, err := r.client.HGet(
+		r.ctx,
+		customRoomKey,
+		roomIdStr,
+	).Result()
+	if roomInRedis == "" {
+		err = errors.New("room not exist")
+	}
+	if roomInRedis != userIdStr {
+		err = errors.New("room does not belong to the user")
+	}
+	if err != nil {
+		return nil
+	}
+	// Remove record
+	_, err = r.client.HDel(
+		r.ctx,
+		customRoomKey,
+		roomIdStr,
+	).Result()
+	return err
 }

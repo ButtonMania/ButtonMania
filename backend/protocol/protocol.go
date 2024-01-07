@@ -3,14 +3,17 @@ package protocol
 import (
 	"encoding/json"
 	"time"
+
+	"github.com/barweiss/go-tuple"
 )
 
 type ButtonPhase string
-type RoomID string
-type ClientID string
 type UserLocale string
 type UserID string
 type MessageType int
+type ClientID string
+type RoomID string
+type RoomKey tuple.T2[ClientID, RoomID]
 
 const (
 	// Button phases
