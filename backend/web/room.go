@@ -19,10 +19,6 @@ type GameRoom struct {
 	closed   bool
 }
 
-const (
-	userPayloadCountInStats = 3
-)
-
 // NewGameRoom creates a new GameRoom instance.
 func NewGameRoom(
 	clientId protocol.ClientID,
@@ -42,12 +38,12 @@ func NewGameRoom(
 }
 
 // Stats returns the statistics for the game room.
-func (r *GameRoom) Stats() (protocol.GameRoomStats, error) {
+func (r *GameRoom) Stats(payloadCount int64) (protocol.GameRoomStats, error) {
 	countActive, countActiveErr := r.DB.GetUsersCountInActiveSessions(r.ClientID, r.RoomID)
 	countLeaderboard, countLeaderboardErr := r.DB.GetUsersCountInLeaderboard(r.ClientID, r.RoomID)
 	bestOverallDuration, bestOverallDurationErr := r.DB.GetBestOverallDurationInLeaderboard(r.ClientID, r.RoomID)
 	bestTodaysDuration, bestTodaysDurationErr := r.DB.GetTodaysDurationInLeaderboard(r.ClientID, r.RoomID)
-	bestUsersPayloads, bestUsersPayloadsErr := r.DB.GetBestUsersPayloads(r.ClientID, r.RoomID, userPayloadCountInStats)
+	bestUsersPayloads, bestUsersPayloadsErr := r.DB.GetBestUsersPayloads(r.ClientID, r.RoomID, payloadCount)
 	err := errors.Join(
 		countActiveErr,
 		countLeaderboardErr,

@@ -17,6 +17,11 @@ import (
 	initdata "github.com/Telegram-Web-Apps/init-data-golang"
 )
 
+const (
+	userPayloadCountInStats = 3
+)
+
+// parseTgInitData parse string to telegram InitData structure
 func (w *Web) parseTgInitData(initDataStr string) (*initdata.InitData, error) {
 	token := w.ctx.Value(bot.KeyTelegramToken).(string)
 	expIn := 24 * time.Hour
@@ -106,21 +111,19 @@ func (w *Web) wsHandler(c *gin.Context) {
 	}
 }
 
-// createHandler
-//
-//	@Summary	Create game room
-//	@Produce	json
-//	@Param		clientId	query	string	true	"Client ID"
-//	@Param		roomId		query	string	true	"Room ID"
-//	@Param		userId		query	string	false	"User ID"
-//	@Param		initData	query	string	false	"Telegram init data"
-//	@Success	200			"ok"
-//	@Failure	400			"User id not provided"
-//	@Failure	400			"Room id not provided"
-//	@Failure	400			"Room id is too long"
-//	@Failure	400			"Client not allowed"
-//	@Failure	400			"Room exists"
-//	@Router		/api/room/create [get]
+// @Summary	Create game room
+// @Produce	json
+// @Param		clientId	query	string	true	"Client ID"
+// @Param		roomId		query	string	true	"Room ID"
+// @Param		userId		query	string	false	"User ID"
+// @Param		initData	query	string	false	"Telegram init data"
+// @Success	200			"ok"
+// @Failure	400			"User id not provided"
+// @Failure	400			"Room id not provided"
+// @Failure	400			"Room id is too long"
+// @Failure	400			"Client not allowed"
+// @Failure	400			"Room exists"
+// @Router		/api/room/create [get]
 func (w *Web) createHandler(c *gin.Context) {
 	clientIdStr := c.Query("clientId")
 	roomIdStr := c.Query("roomId")
@@ -360,7 +363,7 @@ func (w *Web) statsHandler(c *gin.Context) {
 	}
 
 	// Retrive room stats
-	stats, err := room.Stats()
+	stats, err := room.Stats(userPayloadCountInStats)
 	if err != nil {
 		http.Error(
 			c.Writer,
