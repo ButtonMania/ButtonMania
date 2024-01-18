@@ -10,7 +10,7 @@ export function randomEnum<T>(anEnum: T, minIndex?: number, maxIndex?: number): 
 	const enumValues = (Object.values(anEnum) as unknown) as T[keyof T][];
 	const startIndex = minIndex ?? 0;
 	const endIndex = maxIndex ?? enumValues.length;
-	const randomIndex = Math.round(startIndex + (Math.random() * endIndex - startIndex));
+	const randomIndex = Math.round(startIndex + (Math.random() * (endIndex - startIndex)));
 	return enumValues[randomIndex];
 }
 
