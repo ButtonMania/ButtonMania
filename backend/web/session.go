@@ -30,10 +30,10 @@ var (
 type GameSession struct {
 	ctx         *protocol.GameplayContext
 	ws          *websocket.Conn
+	room        *GameRoom
 	userID      protocol.UserID
 	payload     protocol.UserPayload
 	locale      protocol.UserLocale
-	room        *GameRoom
 	lastMsgTime int64
 }
 
@@ -128,11 +128,15 @@ func (s *GameSession) gameplayUpdate(
 	placeInActiveSessionsPtr = &place
 	countInActiveSessionsPtr = &count
 
+	chatMsg := gameplayCtx.ChatMessage
+	gameplayCtx.ChatMessage = nil
+
 	return protocol.NewGameplayMessage(
 		gameplayCtx,
 		nil,
 		nil,
-		msg,
+		chatMsg,
+		((*protocol.GameMessage)(msg)),
 		placeInActiveSessionsPtr,
 		countInActiveSessionsPtr,
 		placeInLeaderboardPtr,
@@ -169,6 +173,7 @@ func (s *GameSession) gameplayRecord(
 		gameplayRecord,
 		nil,
 		nil,
+		nil,
 		placeInActiveSessionsPtr,
 		countInActiveSessionsPtr,
 		placeInLeaderboardPtr,
@@ -192,6 +197,7 @@ func (s *GameSession) gameplayError(
 		nil,
 		nil,
 		nil,
+		nil,
 		protocol.Error,
 	)
 }
@@ -204,6 +210,7 @@ func (s *GameSession) writeNetworkMessage(
 ) error {
 	// Create a new gameplay message and send it to the client as JSON
 	var msg protocol.GameplayMessage
+
 	if gameplayErr != nil {
 		msg = s.gameplayError(gameplayErr)
 	} else if gameplayRecord != nil {
@@ -217,30 +224,54 @@ func (s *GameSession) writeNetworkMessage(
 // updateGameSession updates the game session state.
 func (s *GameSession) updateGameSession(
 	gameplayCtx *protocol.GameplayContext,
-	GameplayMessageCtx *protocol.GameplayContext,
+	gameplayMessageCtx *protocol.GameplayContext,
 ) (*protocol.GameplayContext, error) {
 	var err error
 	nowTimestamp := time.Now().Unix()
 	pushTimestamp := *gameplayCtx.Timestamp
 	holdDuration := nowTimestamp - pushTimestamp
-	GameplayMessageCtx.Duration = &holdDuration
-	GameplayMessageCtx.Timestamp = &pushTimestamp
+	gameplayMessageCtx.Duration = &holdDuration
+	gameplayMessageCtx.Timestamp = &pushTimestamp
 
+	chat := s.room.Chat
 	clientId := s.room.ClientID
 	roodId := s.room.RoomID
+	userId := s.userID
 
 	err = s.validateGameSessionUpdate(
 		gameplayCtx,
-		GameplayMessageCtx,
+		gameplayMessageCtx,
 	)
 	if err != nil {
 		return nil, err
 	}
 
+	if gameplayMessageCtx.ChatMessage != nil {
+		gameplayMessageCtx.ChatMessage.UserID = userId
+		err = chat.PushMessage(
+			clientId,
+			roodId,
+			gameplayMessageCtx.ChatMessage,
+		)
+		if err != nil {
+			return nil, err
+		}
+		gameplayMessageCtx.ChatMessage = nil
+	} else {
+		chatMsg, _ := chat.PopMessage(
+			clientId,
+			roodId,
+			userId,
+		)
+		if chatMsg.Message != "" {
+			gameplayMessageCtx.ChatMessage = chatMsg
+		}
+	}
+
 	err = s.room.DB.SetUserDurationToActiveSessions(
 		clientId,
 		roodId,
-		s.userID,
+		userId,
 		holdDuration,
 		nowTimestamp,
 	)
@@ -248,15 +279,15 @@ func (s *GameSession) updateGameSession(
 		return nil, err
 	}
 
-	s.ctx = GameplayMessageCtx
-	if GameplayMessageCtx.ButtonPhase != protocol.Release {
+	s.ctx = gameplayMessageCtx
+	if gameplayMessageCtx.ButtonPhase != protocol.Release {
 		err = s.writeNetworkMessage(
-			GameplayMessageCtx,
+			gameplayMessageCtx,
 			nil,
 			nil,
 		)
 	}
-	return GameplayMessageCtx, err
+	return gameplayMessageCtx, err
 }
 
 // closeGameSession closes the game session.
@@ -299,7 +330,7 @@ func (s *GameSession) closeGameSession() error {
 	}
 
 	if err != nil {
-		gameError := protocol.NewGameplayError(err.Error())
+		gameError := protocol.NewGameplayError(protocol.GameMessage(err.Error()))
 		gameErrorPtr = &gameError
 	}
 
@@ -363,7 +394,7 @@ func (s *GameSession) MaintainGameSession() error {
 
 	s.ctx, err = s.startGameSession()
 	if err != nil {
-		gameError := protocol.NewGameplayError(err.Error())
+		gameError := protocol.NewGameplayError(protocol.GameMessage(err.Error()))
 		err_ := s.writeNetworkMessage(
 			nil,
 			nil,

@@ -204,7 +204,7 @@ func (w *Web) createHandler(c *gin.Context) {
 	}
 
 	// Create room and add to map
-	w.rooms[roomKey] = NewGameRoom(clientId, roomId, w.db, nil)
+	w.rooms[roomKey], _ = NewGameRoom(clientId, roomId, w.db, w.chat, nil)
 	c.String(http.StatusOK, "ok")
 }
 

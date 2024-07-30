@@ -8,6 +8,7 @@ import (
 	"math/rand"
 	"strconv"
 	"strings"
+	"time"
 
 	"buttonmania.win/protocol"
 	"github.com/barweiss/go-tuple"
@@ -28,9 +29,11 @@ const (
 	RedisKeySessionTs      RedisKey = "sessionts"
 	RedisKeyCustomRooms    RedisKey = "rooms"
 	RedisKeyPayloads       RedisKey = "payloads"
+	RedisKeyChat           RedisKey = "chat"
 	// Session ttl handling constants
-	cleanupRandChance = 5
-	sessionTtlSeconds = 40
+	cleanupRandChance      = 5
+	sessionTtlSeconds      = 40
+	maxChatMessageInStream = 5
 )
 
 // NewRedis creates a new redis instance.
@@ -444,4 +447,104 @@ func (r *Redis) removeCustomRoom(
 		roomIdStr,
 	).Result()
 	return err
+}
+
+// init user's chat consumer group
+func (r *Redis) initChatConsumerGroup(
+	clientId protocol.ClientID,
+	roomId protocol.RoomID,
+) error {
+	streamKey := fmt.Sprintf(
+		"%s:%s:%s",
+		clientId,
+		roomId,
+		RedisKeyChat,
+	)
+	return r.client.XGroupCreateMkStream(
+		r.ctx,
+		streamKey,
+		string(roomId),
+		"$",
+	).Err()
+}
+
+// add user consumer to consumer group of chat stream
+func (r *Redis) addChatConsumerToGroup(
+	clientId protocol.ClientID,
+	roomId protocol.RoomID,
+	userId protocol.UserID,
+) error {
+	streamKey := fmt.Sprintf(
+		"%s:%s:%s",
+		clientId,
+		roomId,
+		RedisKeyChat,
+	)
+	return r.client.XGroupCreateConsumer(
+		r.ctx,
+		streamKey,
+		string(roomId),
+		string(userId),
+	).Err()
+}
+
+// push user's chat message.
+func (r *Redis) pushChatMessage(
+	clientId protocol.ClientID,
+	roomId protocol.RoomID,
+	chatMessage protocol.ChatMessage,
+) error {
+	streamKey := fmt.Sprintf(
+		"%s:%s:%s",
+		clientId,
+		roomId,
+		RedisKeyChat,
+	)
+	return r.client.XAdd(r.ctx, &redis.XAddArgs{
+		MaxLen: maxChatMessageInStream,
+		Stream: streamKey,
+		Values: []interface{}{
+			"UserID", string(chatMessage.UserID),
+			"Message", string(chatMessage.Message),
+		},
+	}).Err()
+}
+
+// pop user's chat message
+func (r *Redis) popChatMessage(
+	clientId protocol.ClientID,
+	roomId protocol.RoomID,
+	userId protocol.UserID,
+) (protocol.ChatMessage, error) {
+	var msg protocol.ChatMessage
+	streamKey := fmt.Sprintf(
+		"%s:%s:%s",
+		clientId,
+		roomId,
+		RedisKeyChat,
+	)
+	result, err := r.client.XReadGroup(r.ctx, &redis.XReadGroupArgs{
+		Streams:  []string{streamKey, ">"},
+		Group:    string(roomId),
+		Consumer: string(userId),
+		Block:    1 * time.Second,
+		Count:    1,
+		NoAck:    true,
+	}).Result()
+	if err == nil {
+		for _, s := range result {
+			for _, message := range s.Messages {
+				msg.Message = message.Values["Message"].(string)
+				msg.UserID = protocol.UserID(message.Values["UserID"].(string))
+				err = r.client.XAck(
+					r.ctx,
+					streamKey,
+					string(roomId),
+					message.ID,
+				).Err()
+				break
+			}
+		}
+	}
+	return msg, err
 }

@@ -1,6 +1,6 @@
-import { ButtonType, MessageType, UserLocale } from "../protocol/enums";
+import { ButtonType, GameState } from "../protocol/enums";
 import { ConnectEvent, DisconnectEvent } from "../protocol/internal";
-import { ErrorResponse, RecordResponse, RoomStats, UpdateResponse } from "../protocol/respons";
+import {ErrorResponse, GameplayMessage, RecordResponse, RoomStats, UpdateResponse} from "../protocol/respons";
 
 import { Config } from "../config";
 import { GameplayMessageRequest } from "../protocol/requests";
@@ -47,23 +47,23 @@ export class NetworkClient {
         MessageBus.raise(new DisconnectEvent()).catch(console.log);
     }
 
-    private onWsClose(ev: CloseEvent): void {
+    private onWsClose(_: CloseEvent): void {
         MessageBus.raise(new DisconnectEvent()).catch(console.log);
     }
 
     private onWsMessage(ev: MessageEvent): void {
-        let raw: any = JSON.parse(ev.data);
+        let raw: GameplayMessage = JSON.parse(ev.data);
 
-        switch (raw.messageType) {
-            case MessageType.Update: {
+        switch (raw.gameState) {
+            case GameState.Update: {
                 MessageBus.raise(plainToInstance(UpdateResponse, raw as object)).catch(console.log);
                 break;
             }
-            case MessageType.Record: {
+            case GameState.Record: {
                 MessageBus.raise(plainToInstance(RecordResponse, raw as object)).catch(console.log);
                 break;
             }
-            case MessageType.Error: {
+            case GameState.Error: {
                 MessageBus.raise(plainToInstance(ErrorResponse, raw as object)).catch(console.log);
                 break;
             }

@@ -4,14 +4,15 @@ import (
 	"encoding/json"
 	"time"
 
-	"github.com/barweiss/go-tuple"
+	tuple "github.com/barweiss/go-tuple"
 )
 
 type ButtonPhase string
 type UserLocale string
 type UserID string
 type UserPayload string
-type MessageType int
+type GameMessage string
+type GameState int
 type ClientID string
 type RoomID string
 type RoomKey tuple.T2[ClientID, RoomID]
@@ -24,22 +25,23 @@ const (
 	// User locale
 	EN UserLocale = "en"
 	RU UserLocale = "ru"
-	// Message type
-	Update MessageType = 0
-	Record MessageType = 1
-	Error  MessageType = 2
+	// Game state
+	Update GameState = 0
+	Record GameState = 1
+	Error  GameState = 99
 )
 
-// GameplayMessageType represents the base struct of game, which contains only message type
-type GameplayMessageType struct {
-	MessageType MessageType `json:"messageType"`
+// GameplayGameState represents the base struct of game, which contains only current game state
+type GameplayGameState struct {
+	GameState GameState `json:"gameState"`
 }
 
 // GameplayContext represents the context of a game session.
 type GameplayContext struct {
-	ButtonPhase ButtonPhase `json:"buttonPhase"`
-	Timestamp   *int64      `json:"timestamp,omitempty"`
-	Duration    *int64      `json:"duration,omitempty"`
+	ButtonPhase ButtonPhase  `json:"buttonPhase"`
+	ChatMessage *ChatMessage `json:"chat,omitempty"`
+	Timestamp   *int64       `json:"timestamp,omitempty"`
+	Duration    *int64       `json:"duration,omitempty"`
 }
 
 // NewGameplayContext creates a new GameplayContext.
@@ -55,11 +57,11 @@ func NewGameplayContext() GameplayContext {
 
 // GameplayError represents an error that can occur during gameplay.
 type GameplayError struct {
-	Message string `json:"message"`
+	Message GameMessage `json:"message"`
 }
 
 // NewGameplayError creates a new GameplayError.
-func NewGameplayError(msg string) GameplayError {
+func NewGameplayError(msg GameMessage) GameplayError {
 	return GameplayError{
 		Message: msg,
 	}
@@ -112,14 +114,26 @@ func NewGameRoomStats(
 	}
 }
 
+// ChatMessage represents the struct, which contains string message with optional user id
+type ChatMessage struct {
+	UserID  UserID `json:"userID,omitempty"`
+	Message string `json:"message"`
+}
+
+// MarshalBinary marshals a ChatMessage to binary data.
+func (m ChatMessage) MarshalBinary() ([]byte, error) {
+	return json.Marshal(m)
+}
+
 // GameplayMessage represents an update sent to the client during gameplay.
 type GameplayMessage struct {
-	GameplayMessageType
+	GameplayGameState
 	GameRoomStats
 	Context          *GameplayContext `json:"context,omitempty"`
+	ChatMessage      *ChatMessage     `json:"chat,omitempty"`
 	Record           *GameplayRecord  `json:"record,omitempty"`
 	Error            *GameplayError   `json:"error,omitempty"`
-	Message          *string          `json:"message,omitempty"`
+	GameMessage      *GameMessage     `json:"message,omitempty"`
 	PlaceActive      *int64           `json:"placeActive,omitempty"`
 	PlaceLeaderboard *int64           `json:"placeLeaderboard,omitempty"`
 	WorldRecord      *bool            `json:"worldRecord,omitempty"`
@@ -130,24 +144,26 @@ func NewGameplayMessage(
 	gameplayContext *GameplayContext,
 	gameplayRecord *GameplayRecord,
 	gameplayError *GameplayError,
-	message *string,
+	chatMessage *ChatMessage,
+	gameMessage *GameMessage,
 	placeActive *int64,
 	totalCountActive *int64,
 	placeLeaderboard *int64,
 	totalCountLeaderboard *int64,
 	worldRecord *bool,
-	messageType MessageType,
+	gameState GameState,
 ) GameplayMessage {
 	return GameplayMessage{
 		Context:          gameplayContext,
 		Record:           gameplayRecord,
 		Error:            gameplayError,
-		Message:          message,
+		ChatMessage:      chatMessage,
+		GameMessage:      gameMessage,
 		PlaceActive:      placeActive,
 		PlaceLeaderboard: placeLeaderboard,
 		WorldRecord:      worldRecord,
-		GameplayMessageType: GameplayMessageType{
-			MessageType: messageType,
+		GameplayGameState: GameplayGameState{
+			GameState: gameState,
 		},
 		GameRoomStats: GameRoomStats{
 			CountActive:      totalCountActive,

@@ -1,8 +1,8 @@
 
-export enum MessageType {
+export enum GameState {
     Update = 0,
     Record = 1,
-    Error = 2
+    Error = 3
 }
 
 export enum ButtonType {

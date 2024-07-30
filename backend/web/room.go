@@ -3,6 +3,7 @@ package web
 import (
 	"errors"
 
+	"buttonmania.win/chat"
 	"buttonmania.win/db"
 	"buttonmania.win/localization"
 	"buttonmania.win/protocol"
@@ -15,6 +16,7 @@ type GameRoom struct {
 	RoomID   protocol.RoomID
 	MsgLoc   *localization.MessagesLocalization
 	DB       *db.DB
+	Chat     *chat.Chat
 	sessions map[protocol.UserID]*GameSession
 	closed   bool
 }
@@ -24,17 +26,20 @@ func NewGameRoom(
 	clientId protocol.ClientID,
 	roomId protocol.RoomID,
 	db *db.DB,
+	chat *chat.Chat,
 	msgLoc *localization.MessagesLocalization,
-) *GameRoom {
+) (*GameRoom, error) {
 	sessions := make(map[protocol.UserID]*GameSession)
+	err := chat.InitConsumerGroup(clientId, roomId)
 	return &GameRoom{
 		ClientID: clientId,
 		RoomID:   roomId,
 		MsgLoc:   msgLoc,
 		DB:       db,
+		Chat:     chat,
 		sessions: sessions,
 		closed:   false,
-	}
+	}, err
 }
 
 // Stats returns the statistics for the game room.

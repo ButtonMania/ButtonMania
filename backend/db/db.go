@@ -243,3 +243,53 @@ func (db *DB) RemoveUserPayload(
 		userID,
 	)
 }
+
+// InitChatConsumerGroup initialize consumer group for chat stream
+func (db *DB) InitChatConsumerGroup(
+	clientId protocol.ClientID,
+	roomId protocol.RoomID,
+) error {
+	return db.redis.initChatConsumerGroup(
+		clientId,
+		roomId,
+	)
+}
+
+// AddConsumerToGroup add new consumer to group
+func (db *DB) AddConsumerToGroup(
+	clientId protocol.ClientID,
+	roomId protocol.RoomID,
+	userId protocol.UserID,
+) error {
+	return db.redis.addChatConsumerToGroup(
+		clientId,
+		roomId,
+		userId,
+	)
+}
+
+// PushChatMessage push user's chat message.
+func (db *DB) PushChatMessage(
+	clientId protocol.ClientID,
+	roomId protocol.RoomID,
+	chatMessage protocol.ChatMessage,
+) error {
+	return db.redis.pushChatMessage(
+		clientId,
+		roomId,
+		chatMessage,
+	)
+}
+
+// PopChatMessage pop user's chat message
+func (db *DB) PopChatMessage(
+	clientId protocol.ClientID,
+	roomId protocol.RoomID,
+	userID protocol.UserID,
+) (protocol.ChatMessage, error) {
+	return db.redis.popChatMessage(
+		clientId,
+		roomId,
+		userID,
+	)
+}
