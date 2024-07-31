@@ -6,7 +6,6 @@ import (
 	"strconv"
 	"time"
 
-	"buttonmania.win/chat"
 	"buttonmania.win/conf"
 	"buttonmania.win/db"
 	"buttonmania.win/localization"
@@ -45,7 +44,6 @@ type Web struct {
 	ctx      context.Context
 	conf     conf.Conf
 	db       *db.DB
-	chat     *chat.Chat
 	engine   *gin.Engine
 	store    sessions.Store
 	upgrader websocket.Upgrader
@@ -59,7 +57,6 @@ func NewWeb(
 	conf conf.Conf,
 	engine *gin.Engine,
 	db *db.DB,
-	chat *chat.Chat,
 	debug bool,
 ) (*Web, error) {
 	sessionName := ctx.Value(KeySessionName).(string)
@@ -102,7 +99,7 @@ func NewWeb(
 				return nil, err
 			}
 			roomKey := protocol.RoomKey(tuple.New2(c.ClientId, r))
-			rooms[roomKey], _ = NewGameRoom(c.ClientId, r, db, chat, msgLoc)
+			rooms[roomKey], _ = NewGameRoom(c.ClientId, r, db, msgLoc)
 		}
 		clients = append(clients, c.ClientId)
 	}
@@ -110,7 +107,7 @@ func NewWeb(
 	// Initialize user created game rooms
 	customRooms, err := db.ListCustomGameRooms()
 	for _, roomKey := range customRooms {
-		rooms[roomKey], _ = NewGameRoom(roomKey.V1, roomKey.V2, db, chat, nil)
+		rooms[roomKey], _ = NewGameRoom(roomKey.V1, roomKey.V2, db, nil)
 	}
 
 	// Apply middlewares and other router parameters

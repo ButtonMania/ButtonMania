@@ -527,22 +527,27 @@ func (r *Redis) popChatMessage(
 		Streams:  []string{streamKey, ">"},
 		Group:    string(roomId),
 		Consumer: string(userId),
-		Block:    1 * time.Second,
-		Count:    1,
+		Block:    time.Second,
+		Count:    10,
 		NoAck:    true,
 	}).Result()
 	if err == nil {
 		for _, s := range result {
 			for _, message := range s.Messages {
-				msg.Message = message.Values["Message"].(string)
-				msg.UserID = protocol.UserID(message.Values["UserID"].(string))
+				message_ := message.Values["Message"].(string)
+				userid_ := protocol.UserID(message.Values["UserID"].(string))
 				err = r.client.XAck(
 					r.ctx,
 					streamKey,
 					string(roomId),
 					message.ID,
 				).Err()
-				break
+
+				if userid_ != userId {
+					msg.Message = message_
+					msg.UserID = userid_
+					break
+				}
 			}
 		}
 	}

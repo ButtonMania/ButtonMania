@@ -105,6 +105,7 @@ func (s *GameSession) shouldSendNewRandomMessage() bool {
 // gameplayUpdate creates a gameplay update message.
 func (s *GameSession) gameplayUpdate(
 	gameplayCtx *protocol.GameplayContext,
+	chatMessage *protocol.ChatMessage,
 ) protocol.GameplayMessage {
 	var msg *string
 	var placeInActiveSessionsPtr *int64
@@ -128,14 +129,11 @@ func (s *GameSession) gameplayUpdate(
 	placeInActiveSessionsPtr = &place
 	countInActiveSessionsPtr = &count
 
-	chatMsg := gameplayCtx.ChatMessage
-	gameplayCtx.ChatMessage = nil
-
 	return protocol.NewGameplayMessage(
 		gameplayCtx,
 		nil,
 		nil,
-		chatMsg,
+		chatMessage,
 		((*protocol.GameMessage)(msg)),
 		placeInActiveSessionsPtr,
 		countInActiveSessionsPtr,
@@ -207,6 +205,7 @@ func (s *GameSession) writeNetworkMessage(
 	gameplayCtx *protocol.GameplayContext,
 	gameplayRecord *protocol.GameplayRecord,
 	gameplayErr *protocol.GameplayError,
+	chatMessage *protocol.ChatMessage,
 ) error {
 	// Create a new gameplay message and send it to the client as JSON
 	var msg protocol.GameplayMessage
@@ -216,7 +215,7 @@ func (s *GameSession) writeNetworkMessage(
 	} else if gameplayRecord != nil {
 		msg = s.gameplayRecord(gameplayRecord)
 	} else if gameplayCtx != nil {
-		msg = s.gameplayUpdate(gameplayCtx)
+		msg = s.gameplayUpdate(gameplayCtx, chatMessage)
 	}
 	return s.ws.WriteJSON(msg)
 }
@@ -233,7 +232,7 @@ func (s *GameSession) updateGameSession(
 	gameplayMessageCtx.Duration = &holdDuration
 	gameplayMessageCtx.Timestamp = &pushTimestamp
 
-	chat := s.room.Chat
+	db := s.room.DB
 	clientId := s.room.ClientID
 	roodId := s.room.RoomID
 	userId := s.userID
@@ -246,25 +245,27 @@ func (s *GameSession) updateGameSession(
 		return nil, err
 	}
 
+	var chatMsg *protocol.ChatMessage
 	if gameplayMessageCtx.ChatMessage != nil {
 		gameplayMessageCtx.ChatMessage.UserID = userId
-		err = chat.PushMessage(
+		err = db.PushChatMessage(
 			clientId,
 			roodId,
-			gameplayMessageCtx.ChatMessage,
+			*gameplayMessageCtx.ChatMessage,
 		)
 		if err != nil {
 			return nil, err
 		}
 		gameplayMessageCtx.ChatMessage = nil
 	} else {
-		chatMsg, _ := chat.PopMessage(
+		chatMessage, _ := db.PopChatMessage(
 			clientId,
 			roodId,
 			userId,
 		)
-		if chatMsg.Message != "" {
-			gameplayMessageCtx.ChatMessage = chatMsg
+
+		if chatMessage.Message != "" && chatMessage.UserID != userId {
+			chatMsg = &chatMessage
 		}
 	}
 
@@ -285,6 +286,7 @@ func (s *GameSession) updateGameSession(
 			gameplayMessageCtx,
 			nil,
 			nil,
+			chatMsg,
 		)
 	}
 	return gameplayMessageCtx, err
@@ -338,6 +340,7 @@ func (s *GameSession) closeGameSession() error {
 		nil,
 		gameRecordPtr,
 		gameErrorPtr,
+		nil,
 	)
 
 	return err
@@ -382,6 +385,7 @@ func (s *GameSession) startGameSession() (*protocol.GameplayContext, error) {
 		&gameplayCtx,
 		nil,
 		nil,
+		nil,
 	)
 
 	return &gameplayCtx, err
@@ -399,6 +403,7 @@ func (s *GameSession) MaintainGameSession() error {
 			nil,
 			nil,
 			&gameError,
+			nil,
 		)
 		err = errors.Join(err, err_)
 	} else {

@@ -8,7 +8,6 @@ import (
 	"syscall"
 
 	"buttonmania.win/bot"
-	"buttonmania.win/chat"
 	"buttonmania.win/conf"
 	"buttonmania.win/db"
 	"buttonmania.win/web"
@@ -74,17 +73,12 @@ func main() {
 	}
 	defer db.Close()
 
-	chat, err := chat.NewChat(ctx, db)
-	if err != nil {
-		log.Fatalf("Failed to initialize chat: %v", err)
-	}
-
 	bot, err := bot.NewBot(ctx, engine, db, debug)
 	if err != nil {
 		log.Fatalf("Failed to initialize bot: %v", err)
 	}
 
-	web, err := web.NewWeb(ctx, conf, engine, db, chat, debug)
+	web, err := web.NewWeb(ctx, conf, engine, db, debug)
 	if err != nil {
 		log.Fatalf("Failed to initialize web: %v", err)
 	}
