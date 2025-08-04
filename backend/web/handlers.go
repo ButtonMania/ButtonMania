@@ -11,10 +11,10 @@ import (
 
 	"buttonmania.win/bot"
 	"buttonmania.win/protocol"
-	"github.com/barweiss/go-tuple"
 	"github.com/gin-gonic/gin"
 
 	initdata "github.com/Telegram-Web-Apps/init-data-golang"
+	tuple "github.com/barweiss/go-tuple"
 )
 
 const (
@@ -39,16 +39,14 @@ func (w *Web) parseTgInitData(initDataStr string) (*initdata.InitData, error) {
 	return initData, err
 }
 
-// wsHandler
-//
-//	@Summary	Handles WebSocket connections
-//	@Param		clientId	query	string	true	"Client ID"
-//	@Param		roomId		query	string	true	"Room ID"
-//	@Param		userId		query	string	false	"User ID"
-//	@Param		locale		query	string	false	"User locale"
-//	@Param		payload		query	string	false	"User payload"
-//	@Param		initData	query	string	false	"Telegram init data"
-//	@Router		/ws [get]
+// @Summary	Handles WebSocket connections
+// @Param		clientId	query	string	true	"Client ID"
+// @Param		roomId		query	string	true	"Room ID"
+// @Param		userId		query	string	false	"User ID"
+// @Param		locale		query	string	false	"User locale"
+// @Param		payload		query	string	false	"User payload"
+// @Param		initData	query	string	false	"Telegram init data"
+// @Router		/ws [get]
 func (w *Web) wsHandler(c *gin.Context) {
 	clientIdStr := c.Query("clientId")
 	roomIdStr := c.Query("roomId")
@@ -124,7 +122,7 @@ func (w *Web) wsHandler(c *gin.Context) {
 // @Failure	400			"Client not allowed"
 // @Failure	400			"Room exists"
 // @Router		/api/room/create [get]
-func (w *Web) createHandler(c *gin.Context) {
+func (w *Web) createRoomHandler(c *gin.Context) {
 	clientIdStr := c.Query("clientId")
 	roomIdStr := c.Query("roomId")
 	userIdStr := c.Query("userId")
@@ -208,22 +206,20 @@ func (w *Web) createHandler(c *gin.Context) {
 	c.String(http.StatusOK, "ok")
 }
 
-// deleteHandler
-//
-//	@Summary	Delete game room
-//	@Produce	json
-//	@Param		clientId	query	string	true	"Client ID"
-//	@Param		roomId		query	string	true	"Room ID"
-//	@Param		userId		query	string	false	"User ID"
-//	@Param		initData	query	string	false	"Telegram init data"
-//	@Success	200			"ok"
-//	@Failure	400			"User id not provided"
-//	@Failure	400			"Room id not provided"
-//	@Failure	400			"Room id is too long"
-//	@Failure	400			"Room cannot be deleted"
-//	@Failure	404			"Room not found"
-//	@Router		/api/room/delete [get]
-func (w *Web) deleteHandler(c *gin.Context) {
+// @Summary	Delete game room
+// @Produce	json
+// @Param		clientId	query	string	true	"Client ID"
+// @Param		roomId		query	string	true	"Room ID"
+// @Param		userId		query	string	false	"User ID"
+// @Param		initData	query	string	false	"Telegram init data"
+// @Success	200			"ok"
+// @Failure	400			"User id not provided"
+// @Failure	400			"Room id not provided"
+// @Failure	400			"Room id is too long"
+// @Failure	400			"Room cannot be deleted"
+// @Failure	404			"Room not found"
+// @Router		/api/room/delete [get]
+func (w *Web) deleteRoomHandler(c *gin.Context) {
 	clientIdStr := c.Query("clientId")
 	roomIdStr := c.Query("roomId")
 	userIdStr := c.Query("userId")
@@ -316,18 +312,16 @@ func (w *Web) deleteHandler(c *gin.Context) {
 	c.String(http.StatusOK, "ok")
 }
 
-// statsHandler
-//
-//	@Summary	Get room stats
-//	@Produce	json
-//	@Param		clientId	query		string	true	"Client ID"
-//	@Param		roomId		query		string	true	"Room ID"
-//	@Success	200			{object}	protocol.GameRoomStats
-//	@Failure	400			"Room id not provided"
-//	@Failure	400			"Room id is too long"
-//	@Failure	404			"Room not found"
-//	@Router		/api/room/stats [get]
-func (w *Web) statsHandler(c *gin.Context) {
+// @Summary	Get room stats
+// @Produce	json
+// @Param		clientId	query		string	true	"Client ID"
+// @Param		roomId		query		string	true	"Room ID"
+// @Success	200			{object}	protocol.GameRoomStats
+// @Failure	400			"Room id not provided"
+// @Failure	400			"Room id is too long"
+// @Failure	404			"Room not found"
+// @Router		/api/room/stats [get]
+func (w *Web) statsRoomHandler(c *gin.Context) {
 	clientIdStr := c.Query("clientId")
 	roomIdStr := c.Query("roomId")
 
@@ -373,5 +367,59 @@ func (w *Web) statsHandler(c *gin.Context) {
 		return
 	}
 
+	c.JSON(http.StatusOK, stats)
+}
+
+// @Summary	Get client stats
+// @Produce	json
+// @Param		clientId	query		string	true	"Client ID"
+// @Success	200			{object}	protocol.ClientStats
+// @Failure	404			"Client not found"
+// @Router		/api/stats [get]
+func (w *Web) statsHandler(c *gin.Context) {
+	exists := false
+	clientIdStr := c.Query("clientId")
+	clientId := protocol.ClientID(clientIdStr)
+
+	for _, clientsConf := range w.conf.Clients {
+		if clientId == clientsConf.ClientId {
+			exists = true
+			break
+		}
+	}
+
+	if !exists {
+		http.Error(
+			c.Writer,
+			"Client not found",
+			http.StatusNotFound,
+		)
+		return
+	}
+
+	// Get rooms by key
+	customRooms, err := w.db.ListCustomGameRooms()
+	if err != nil {
+		http.Error(
+			c.Writer,
+			err.Error(),
+			http.StatusInternalServerError,
+		)
+		return
+	}
+
+	onlineUsersCount, err := w.db.GetOnlineUsersCount(clientId)
+	if err != nil {
+		http.Error(
+			c.Writer,
+			err.Error(),
+			http.StatusInternalServerError,
+		)
+		return
+	}
+
+	usersOnline := int64(onlineUsersCount)
+	roomsCount := int64(len(customRooms))
+	stats := protocol.NewClientStats(&usersOnline, &roomsCount)
 	c.JSON(http.StatusOK, stats)
 }

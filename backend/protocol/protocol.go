@@ -88,6 +88,23 @@ func (r GameplayRecord) MarshalBinary() ([]byte, error) {
 	return json.Marshal(r)
 }
 
+// ClientStats
+type ClientStats struct {
+	UsersOnline *int64 `json:"usersOnline,omitempty"`
+	RoomsCount  *int64 `json:"roomsCount,omitempty"`
+}
+
+// NewClientStats creates a new ClientStats.
+func NewClientStats(
+	usersOnline *int64,
+	roomsCount *int64,
+) ClientStats {
+	return ClientStats{
+		UsersOnline: usersOnline,
+		RoomsCount:  roomsCount,
+	}
+}
+
 // GameRoomStats represents statistics for a game room.
 type GameRoomStats struct {
 	CountActive         *int64         `json:"countActive,omitempty"`

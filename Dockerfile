@@ -1,6 +1,6 @@
 # ==============================================================================
 
-FROM node:alpine3.16 as frontend_builder
+FROM node:alpine3.21 as frontend_builder
 
 WORKDIR /frontend
 COPY ./frontend/package.json /frontend/package.json

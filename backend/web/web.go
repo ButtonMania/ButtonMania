@@ -143,8 +143,6 @@ func NewWeb(
 	}, err
 }
 
-// Run
-//
 //	@title			ButtonMania API
 //	@version		1.0
 //	@contact.name	ButtonMania Team
@@ -158,9 +156,10 @@ func (w *Web) Run() error {
 
 	w.engine.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 	w.engine.GET("/ws", w.wsHandler)
-	w.engine.GET("/api/room/create", w.createHandler)
-	w.engine.GET("/api/room/delete", w.deleteHandler)
-	w.engine.GET("/api/room/stats", w.statsHandler)
+	w.engine.GET("/api/room/create", w.createRoomHandler)
+	w.engine.GET("/api/room/delete", w.deleteRoomHandler)
+	w.engine.GET("/api/room/stats", w.statsRoomHandler)
+	w.engine.GET("/api/stats", w.statsHandler)
 
 	if len(serverTLSCert) > 0 && len(serverTLSKey) > 0 {
 		return w.engine.RunTLS(

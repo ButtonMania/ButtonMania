@@ -140,6 +140,15 @@ func (db *DB) GetUsersCountInActiveSessions(
 	)
 }
 
+// GetOnlineUsersCount retrieves the count of online users of given client.
+func (db *DB) GetOnlineUsersCount(
+	clientId protocol.ClientID,
+) (int64, error) {
+	return db.redis.getOnlineUsersCount(
+		clientId,
+	)
+}
+
 // SetUserDurationToActiveSessions sets the user's duration in active sessions.
 func (db *DB) SetUserDurationToActiveSessions(
 	clientId protocol.ClientID,

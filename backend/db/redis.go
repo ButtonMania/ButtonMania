@@ -11,8 +11,9 @@ import (
 	"time"
 
 	"buttonmania.win/protocol"
-	"github.com/barweiss/go-tuple"
-	"github.com/go-redis/redis/v8"
+
+	tuple "github.com/barweiss/go-tuple"
+	redis "github.com/go-redis/redis/v8"
 )
 
 type RedisKey string
@@ -157,6 +158,35 @@ func (r *Redis) getUsersCountInActiveSessions(
 		"-inf",
 		"+inf",
 	).Result()
+}
+
+// retrieves the count of online users of gived client.
+func (r *Redis) getOnlineUsersCount(
+	clientId protocol.ClientID,
+) (int64, error) {
+	var total int64
+	pattern := fmt.Sprintf(
+		"%s:%s:*",
+		clientId,
+		RedisKeyActiveSessions,
+	)
+	keys, err := r.client.Keys(r.ctx, pattern).Result()
+	if err != nil {
+		return total, err
+	}
+	for _, key := range keys {
+		count, err := r.client.ZCount(
+			r.ctx,
+			key,
+			"-inf",
+			"+inf",
+		).Result()
+		if err != nil {
+			return total, err
+		}
+		total += count
+	}
+	return total, nil
 }
 
 // sets the user's duration in active sessions.
