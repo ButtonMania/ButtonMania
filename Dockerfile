@@ -1,12 +1,12 @@
 # ==============================================================================
 
-FROM node:alpine3.21 as frontend_builder
+FROM node:alpine3.16 as frontend_builder
 
 WORKDIR /frontend
 COPY ./frontend/package.json /frontend/package.json
 
 ENV NODE_OPTIONS --openssl-legacy-provider
-RUN yarn
+RUN yarn --ignore-engines
 
 COPY ./frontend/preact.config.js /frontend/preact.config.js
 COPY ./frontend/prerender-urls.json /frontend/prerender-urls.json

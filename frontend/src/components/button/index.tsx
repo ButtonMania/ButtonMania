@@ -1,13 +1,14 @@
 import { ButtonPhase, ButtonType } from '../../protocol/enums';
 import { Component, h } from 'preact';
 
+import { secondsToHHMMSS } from '../../utils';
 import { AppContext } from '../context';
+import Player from './player';
+
 import ArrowLeft from './arrow_left.svg';
 import ArrowRight from './arrow_right.svg';
 import Circles from './circles.svg';
 import CirclesRecord from './circles_record.svg';
-import { Player } from "@lottiefiles/react-lottie-player";
-import { secondsToHHMMSS } from '../../utils';
 import style from './style.css';
 
 interface Props {

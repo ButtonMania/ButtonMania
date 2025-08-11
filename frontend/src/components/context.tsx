@@ -1,46 +1,46 @@
-import { ButtonPhase, ButtonType, UserLocale } from '../protocol/enums';
+/// <reference types="preact/compat" />
+import { ButtonPhase, ButtonType, UserLocale } from "../protocol/enums";
 
-import { createContext } from 'preact';
+import { createContext } from "preact/compat";
 
 export interface BaseContextProps {
-    locale: UserLocale;
-    initData: string;
-    telegramUserID: number;
-    isPremium: boolean;
-    isNewYear: boolean;
-    buttonType: ButtonType;
-    buttonPhase: ButtonPhase;
+  locale: UserLocale;
+  initData: string;
+  telegramUserID: number;
+  isPremium: boolean;
+  isNewYear: boolean;
+  buttonType: ButtonType;
+  buttonPhase: ButtonPhase;
 }
 
 export interface HeaderContextProps extends BaseContextProps {
-    headerText: string;
-    messageText: string;
-    bestOverallDurationText: string;
-    bestTodaysDurationText: string;
-    bestOverallDurationValue: number;
-    bestTodaysDurationValue: number;
+  headerText: string;
+  messageText: string;
+  bestOverallDurationText: string;
+  bestTodaysDurationText: string;
+  bestOverallDurationValue: number;
+  bestTodaysDurationValue: number;
 }
 
 export interface ButtonContextProps extends BaseContextProps {
-    pushTimestamp: number;
-    holdDuration: number;
-    worldRecord: boolean;
-    buttonText: string;
-    buttonAnimation: string;
+  pushTimestamp: number;
+  holdDuration: number;
+  worldRecord: boolean;
+  buttonText: string;
+  buttonAnimation: string;
 }
 
 export interface FooterContextProps extends BaseContextProps {
-    placeActiveValue: number;
-    placeLeaderboardValue: number;
-    countActiveValue: number;
-    countLeaderboardValue: number;
-    footerText: string;
+  placeActiveValue: number;
+  placeLeaderboardValue: number;
+  countActiveValue: number;
+  countLeaderboardValue: number;
+  footerText: string;
 }
 
-export interface AppContextProps extends
-    HeaderContextProps,
+export interface AppContextProps
+  extends HeaderContextProps,
     ButtonContextProps,
-    FooterContextProps {
-}
+    FooterContextProps {}
 
 export const AppContext = createContext({} as AppContextProps);

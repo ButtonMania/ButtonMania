@@ -5,3 +5,5 @@ build
 *.lock
 *.pem
 *.key
+package-lock.json
+size-plugin.json
