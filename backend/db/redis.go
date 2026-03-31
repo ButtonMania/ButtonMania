@@ -5,7 +5,6 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
-	"math/rand"
 	"strconv"
 	"strings"
 	"time"
@@ -32,9 +31,9 @@ const (
 	RedisKeyPayloads       RedisKey = "payloads"
 	RedisKeyChat           RedisKey = "chat"
 	// Session ttl handling constants
-	cleanupRandChance      = 5
-	sessionTtlSeconds      = 40
-	maxChatMessageInStream = 5
+	SessionTTLSeconds      int64 = 40
+	CleanupInterval              = 30 * time.Second
+	maxChatMessageInStream       = 5
 )
 
 // NewRedis creates a new redis instance.
@@ -63,10 +62,39 @@ func NewRedis(ctx context.Context) (*Redis, error) {
 		return nil, err
 	}
 
-	return &Redis{
+	r := &Redis{
 		ctx:    ctx,
 		client: client,
-	}, nil
+	}
+	go r.startCleanupWorker()
+	return r, nil
+}
+
+// startCleanupWorker runs a background goroutine that periodically cleans expired sessions.
+func (r *Redis) startCleanupWorker() {
+	ticker := time.NewTicker(CleanupInterval)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ticker.C:
+			r.cleanupAllExpiredSessions()
+		case <-r.ctx.Done():
+			return
+		}
+	}
+}
+
+// cleanupAllExpiredSessions scans all session keys and removes expired entries.
+func (r *Redis) cleanupAllExpiredSessions() {
+	now := time.Now().Unix()
+	pattern := fmt.Sprintf("*:%s:*", RedisKeySessionTs)
+	iter := r.client.Scan(r.ctx, 0, pattern, 0).Iterator()
+	for iter.Next(r.ctx) {
+		sessionTsKey := iter.Val()
+		// Derive active sessions key from session timestamp key
+		activeSessionsKey := strings.Replace(sessionTsKey, string(RedisKeySessionTs), string(RedisKeyActiveSessions), 1)
+		_ = r.cleanupExpiredSessions(activeSessionsKey, sessionTsKey, now)
+	}
 }
 
 // closes the redis connection.
@@ -82,7 +110,7 @@ func (r *Redis) cleanupExpiredSessions(
 ) error {
 	var err error
 	var expiredTtlsMembers []interface{}
-	expiredTtlScore := strconv.FormatInt(now-sessionTtlSeconds, 10)
+	expiredTtlScore := strconv.FormatInt(now-SessionTTLSeconds, 10)
 	expiredTtlsResult, zrgageTsErr := r.client.ZRangeByScore(
 		r.ctx,
 		sessionTsKey,
@@ -197,7 +225,6 @@ func (r *Redis) setUserDurationToActiveSessions(
 	duration int64,
 	now int64,
 ) error {
-	var err error
 	activeSessionsKey := fmt.Sprintf(
 		"%s:%s:%s",
 		clientId,
@@ -226,15 +253,7 @@ func (r *Redis) setUserDurationToActiveSessions(
 			Member: string(userID),
 		},
 	).Err()
-	// Remove expired sessions
-	if rand.Intn(cleanupRandChance) == 0 {
-		err = errors.Join(
-			err,
-			r.cleanupExpiredSessions(activeSessionsKey, sessionTsKey, now),
-		)
-	}
 	return errors.Join(
-		err,
 		addActiveSessionsErr,
 		addSessionTsErr,
 	)
@@ -247,7 +266,6 @@ func (r *Redis) removeUserDurationFromActiveSessions(
 	userID protocol.UserID,
 	now int64,
 ) error {
-	var err error
 	activeSessionsKey := fmt.Sprintf(
 		"%s:%s:%s",
 		clientId,
@@ -270,15 +288,7 @@ func (r *Redis) removeUserDurationFromActiveSessions(
 		sessionTsKey,
 		string(userID),
 	).Err()
-	// Remove expired sessions
-	if rand.Intn(cleanupRandChance) == 0 {
-		err = errors.Join(
-			err,
-			r.cleanupExpiredSessions(activeSessionsKey, sessionTsKey, now),
-		)
-	}
 	return errors.Join(
-		err,
 		remActiveSessionsErr,
 		remSessionTsErr,
 	)

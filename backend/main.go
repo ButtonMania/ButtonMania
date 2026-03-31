@@ -2,7 +2,7 @@ package main
 
 import (
 	"context"
-	"log"
+	"log/slog"
 	"os"
 	"os/signal"
 	"syscall"
@@ -42,57 +42,82 @@ var (
 func main() {
 	kingpin.Version("0.0.1")
 	kingpin.Parse()
+
+	// Initialize structured logging
+	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
+		Level: slog.LevelInfo,
+	}))
+	slog.SetDefault(logger)
+
 	defer func() {
 		if r := recover(); r != nil {
-			log.Fatalf("Panic: %v", r)
+			slog.Error("panic recovered", "panic", r)
+			os.Exit(1)
 		}
 	}()
 
 	// Load config file
 	err := config.LoadFiles(*configPath)
 	if err != nil {
-		log.Fatalf("Failed to load config file: %v", err)
+		slog.Error("failed to load config file", "error", err)
+		os.Exit(1)
 	}
 
 	// Bind config struct
 	conf := conf.Conf{}
 	err = config.Decode(&conf)
 	if err != nil {
-		log.Fatalf("Failed to bind config struct: %v", err)
+		slog.Error("failed to bind config struct", "error", err)
+		os.Exit(1)
 	}
 
-	// Initialize context
-	ctx := setupContext()
+	// Initialize context with cancellation for graceful shutdown
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	ctx = setupContext(ctx)
 	engine := gin.Default()
 	debug := gin.Mode() == gin.DebugMode
 
 	// Initialize and check errors for each component
 	db, err := db.NewDB(ctx)
 	if err != nil {
-		log.Fatalf("Failed to initialize db: %v", err)
+		slog.Error("failed to initialize db", "error", err)
+		os.Exit(1)
 	}
 	defer db.Close()
 
 	bot, err := bot.NewBot(ctx, engine, db, debug)
 	if err != nil {
-		log.Fatalf("Failed to initialize bot: %v", err)
+		slog.Error("failed to initialize bot", "error", err)
+		os.Exit(1)
 	}
 
 	web, err := web.NewWeb(ctx, conf, engine, db, debug)
 	if err != nil {
-		log.Fatalf("Failed to initialize web: %v", err)
+		slog.Error("failed to initialize web", "error", err)
+		os.Exit(1)
 	}
 
 	// Start the web and bot components
-	go web.Run()
-	go bot.Run()
+	go func() {
+		if err := web.Run(); err != nil {
+			slog.Error("web server error", "error", err)
+		}
+	}()
+	go func() {
+		if err := bot.Run(); err != nil {
+			slog.Error("bot error", "error", err)
+		}
+	}()
 
-	// Handle CTRL-C
-	sigIntHandler()
+	slog.Info("server started", "debug", debug)
+
+	// Graceful shutdown
+	gracefulShutdown(cancel, db)
 }
 
-func setupContext() context.Context {
-	ctx := context.TODO()
+func setupContext(ctx context.Context) context.Context {
 	ctx = context.WithValue(ctx, db.KeyPostgresUrl, *postgresUrl)
 	ctx = context.WithValue(ctx, db.KeyRedisAddress, *redisAddress)
 	ctx = context.WithValue(ctx, db.KeyRedisUsername, *redisUsername)
@@ -115,10 +140,20 @@ func setupContext() context.Context {
 	return ctx
 }
 
-func sigIntHandler() {
+func gracefulShutdown(cancel context.CancelFunc, database interface{ Close() error }) {
 	ch := make(chan os.Signal, 1)
-	signal.Notify(ch, syscall.SIGINT)
-	<-ch
-	log.Println("CTRL-C; exiting")
+	signal.Notify(ch, syscall.SIGINT, syscall.SIGTERM)
+	sig := <-ch
+	slog.Info("shutdown signal received", "signal", sig)
+
+	// Cancel context to stop background workers
+	cancel()
+
+	// Close database connections
+	if err := database.Close(); err != nil {
+		slog.Error("error closing database", "error", err)
+	}
+
+	slog.Info("server stopped gracefully")
 	os.Exit(0)
 }

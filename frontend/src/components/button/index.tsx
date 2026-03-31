@@ -289,12 +289,16 @@ export default class Button extends Component<Props, State> {
                         </div>
                     </div>
                 </div>
-                <div class={style.arrows}>
-                    <a href='#' onClick={this.onClickLeftArrow.bind(this)}><ArrowLeft /></a>
-                    <a href='#' onClick={this.onClickRightArrow.bind(this)}><ArrowRight /></a>
-                </div>
+                <nav class={style.arrows} aria-label="Button type selection">
+                    <a href='#' onClick={this.onClickLeftArrow.bind(this)} aria-label="Previous button type"><ArrowLeft /></a>
+                    <a href='#' onClick={this.onClickRightArrow.bind(this)} aria-label="Next button type"><ArrowRight /></a>
+                </nav>
                 <div
                     class={style.gradient}
+                    role="button"
+                    tabIndex={0}
+                    aria-label="Hold the button to play"
+                    aria-pressed={this.context.buttonPhase === ButtonPhase.Hold || this.context.buttonPhase === ButtonPhase.Push}
                     onMouseDown={this.onMouseDown.bind(this)}
                     onMouseUp={this.onMouseUp.bind(this)}
                     onMouseLeave={this.onMouseLeave.bind(this)}

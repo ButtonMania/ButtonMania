@@ -41,14 +41,16 @@ const (
 )
 
 type Web struct {
-	ctx      context.Context
-	conf     conf.Conf
-	db       *db.DB
-	engine   *gin.Engine
-	store    sessions.Store
-	upgrader websocket.Upgrader
-	clients  []protocol.ClientID
-	rooms    map[protocol.RoomKey]*GameRoom
+	ctx         context.Context
+	conf        conf.Conf
+	db          *db.DB
+	engine      *gin.Engine
+	store       sessions.Store
+	upgrader    websocket.Upgrader
+	clients     []protocol.ClientID
+	rooms       map[protocol.RoomKey]*GameRoom
+	rateLimiter *RateLimiter
+	metrics     *Metrics
 }
 
 // NewWeb creates a new Web instance.
@@ -64,10 +66,12 @@ func NewWeb(
 	sessionSecret := ctx.Value(KeySessionSecret).(string)
 	allowedOrigins := ctx.Value(KeyAllowedOrigins).(string)
 
-	// Initialize router, session storage
+	// Initialize router, session storage, rate limiter, metrics
 	store := cookie.NewStore([]byte(sessionSecret))
 	rooms := make(map[protocol.RoomKey]*GameRoom)
 	clients := make([]protocol.ClientID, 0)
+	rateLimiter := NewRateLimiter(3, 20) // max 3 WS connections per user, 20 msgs/sec
+	metrics := NewMetrics()
 
 	// Initialize WebSocket upgrader
 	originChecker := glob.MustCompile(allowedOrigins)
@@ -132,14 +136,16 @@ func NewWeb(
 	}))
 
 	return &Web{
-		ctx:      ctx,
-		conf:     conf,
-		db:       db,
-		engine:   engine,
-		store:    store,
-		upgrader: upgrader,
-		clients:  clients,
-		rooms:    rooms,
+		ctx:         ctx,
+		conf:        conf,
+		db:          db,
+		engine:      engine,
+		store:       store,
+		upgrader:    upgrader,
+		clients:     clients,
+		rooms:       rooms,
+		rateLimiter: rateLimiter,
+		metrics:     metrics,
 	}, err
 }
 
@@ -154,12 +160,18 @@ func (w *Web) Run() error {
 	serverTLSCert := w.ctx.Value(KeyServerTLSCert).(string)
 	serverTLSKey := w.ctx.Value(KeyServerTLSKey).(string)
 
+	// Metrics and rate limiting middleware
+	w.engine.Use(w.metrics.MetricsMiddleware())
+	w.engine.Use(RateLimitMiddleware(120)) // 120 requests per minute per IP
+
 	w.engine.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 	w.engine.GET("/ws", w.wsHandler)
 	w.engine.GET("/api/room/create", w.createRoomHandler)
 	w.engine.GET("/api/room/delete", w.deleteRoomHandler)
 	w.engine.GET("/api/room/stats", w.statsRoomHandler)
 	w.engine.GET("/api/stats", w.statsHandler)
+	w.engine.GET("/health", HealthHandler(w.db))
+	w.engine.GET("/metrics", w.metrics.MetricsHandler())
 
 	if len(serverTLSCert) > 0 && len(serverTLSKey) > 0 {
 		return w.engine.RunTLS(

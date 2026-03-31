@@ -51,8 +51,8 @@ export default class Header extends Component {
             this.buttonPhaseClass(context.buttonPhase)
         ];
         return (
-            <header class={headerClasses.join(' ')}>
-                <h1 class={style.type}>{context.headerText}</h1>
+            <header class={headerClasses.join(' ')} role="banner" aria-label="Game status">
+                <h1 class={style.type} aria-live="polite">{context.headerText}</h1>
                 <div class={style.message_wrapper}>
                     <div class={style.message_inner}>
                         <div class={style.record_wrapper}>
