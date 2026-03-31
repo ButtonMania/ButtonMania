@@ -3,7 +3,7 @@ package web
 import (
 	"errors"
 	"fmt"
-	"log"
+	"log/slog"
 	"net/http"
 	"slices"
 	"strconv"
@@ -27,6 +27,7 @@ func (w *Web) parseTgInitData(initDataStr string) (*initdata.InitData, error) {
 	expIn := 24 * time.Hour
 	// Validate telegram init data
 	if err := initdata.Validate(initDataStr, token, expIn); err != nil && gin.Mode() == gin.ReleaseMode {
+		slog.Warn("invalid telegram init data", "error", err)
 		err = errors.Join(errors.New("invalid telegram init data"), err)
 		return nil, err
 	}
@@ -95,16 +96,45 @@ func (w *Web) wsHandler(c *gin.Context) {
 		return
 	}
 
+	// Rate limit: check per-user WebSocket connections
+	if !w.rateLimiter.AddConnection(string(userID)) {
+		http.Error(c.Writer, "Too many connections", http.StatusTooManyRequests)
+		return
+	}
+
 	ws, err := w.upgrader.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {
-		log.Println("Failed to create WebSocket connection", err)
+		w.rateLimiter.RemoveConnection(string(userID))
+		slog.Error("failed to create WebSocket connection",
+			"error", err,
+			"user_id", userID,
+		)
 		http.Error(c.Writer, "Failed to create WebSocket connection", http.StatusInternalServerError)
 		return
 	}
-	defer ws.Close()
+	defer func() {
+		ws.Close()
+		w.rateLimiter.RemoveConnection(string(userID))
+		w.metrics.ActiveWSConns.Add(-1)
+		w.metrics.ActiveSessions.Add(-1)
+	}()
+
+	w.metrics.ActiveWSConns.Add(1)
+	w.metrics.ActiveSessions.Add(1)
+	w.metrics.TotalSessions.Add(1)
+
+	slog.Info("game session started",
+		"user_id", userID,
+		"client_id", clientId,
+		"room_id", roomId,
+	)
 
 	if err := room.MaintainGameSession(userID, payload, locale, ws); err != nil {
-		log.Println("Error occurred while maintaining the game session:", err)
+		slog.Warn("game session ended with error",
+			"error", err,
+			"user_id", userID,
+		)
+		w.metrics.WebSocketErrors.Add(1)
 		return
 	}
 }

@@ -42,6 +42,16 @@ func (db *DB) Close() error {
 	return errors.Join(rErr, pErr)
 }
 
+// PingRedis checks Redis connectivity.
+func (db *DB) PingRedis() error {
+	return db.redis.client.Ping(db.redis.ctx).Err()
+}
+
+// PingPostgres checks Postgres connectivity.
+func (db *DB) PingPostgres() error {
+	return db.postgres.pool.Ping(db.postgres.ctx)
+}
+
 // AddRecordToLeaderboard adds a gameplay record to the leaderboard.
 func (db *DB) AddRecordToLeaderboard(
 	clientId protocol.ClientID,

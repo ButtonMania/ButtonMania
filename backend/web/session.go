@@ -3,10 +3,18 @@ package web
 import (
 	"errors"
 	"fmt"
+	"log/slog"
 	"time"
 
 	"buttonmania.win/protocol"
 	"github.com/gorilla/websocket"
+)
+
+const (
+	// MaxChatMessageLength is the maximum allowed length of a chat message.
+	MaxChatMessageLength = 500
+	// MaxMessageSize is the maximum WebSocket message size in bytes.
+	MaxMessageSize = 4096
 )
 
 // Define session errors
@@ -247,6 +255,10 @@ func (s *GameSession) updateGameSession(
 
 	var chatMsg *protocol.ChatMessage
 	if gameplayMessageCtx.ChatMessage != nil {
+		// Validate chat message length
+		if len(gameplayMessageCtx.ChatMessage.Message) > MaxChatMessageLength {
+			gameplayMessageCtx.ChatMessage.Message = gameplayMessageCtx.ChatMessage.Message[:MaxChatMessageLength]
+		}
 		gameplayMessageCtx.ChatMessage.UserID = userId
 		err = db.PushChatMessage(
 			clientId,
@@ -396,8 +408,15 @@ func (s *GameSession) MaintainGameSession() error {
 	var err error
 	var updatedGameplayCtx *protocol.GameplayContext
 
+	// Set WebSocket read limits for input validation
+	s.ws.SetReadLimit(MaxMessageSize)
+
 	s.ctx, err = s.startGameSession()
 	if err != nil {
+		slog.Warn("failed to start game session",
+			"error", err,
+			"user_id", s.userID,
+		)
 		gameError := protocol.NewGameplayError(protocol.GameMessage(err.Error()))
 		err_ := s.writeNetworkMessage(
 			nil,

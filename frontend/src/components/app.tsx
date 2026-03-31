@@ -13,7 +13,9 @@ import { enumIndex, randomEnum } from "../utils";
 
 import Button from "./button";
 import { Config } from "../config";
+import ConnectionStatus from "./connection-status";
 import Container from "./container";
+import ErrorBoundary from "./error-boundary";
 import Footer from "./footer";
 import { GameplayMessageRequest } from "../protocol/requests";
 import Header from "./header";
@@ -320,22 +322,25 @@ export default class App extends Component<Props, State> {
 
   render(props: Props, state: State): ComponentChild {
     return (
-      // @ts-expect-error preact/compat and JSX factory type issue workaround
-      <AppContext.Provider value={state}>
-        <Container>
-          <Header />
-          <Button
-            buttonHandler={this.onChangeButtonPhase.bind(this)}
-            arrowsHandler={this.onChangeButtonType.bind(this)}
-          />
-          <Footer
-            placeActiveText={i18next.t("placeActiveText")}
-            placeLeaderboardText={i18next.t("placeLeaderboardText")}
-            countActiveText={i18next.t("countActiveText")}
-            countLeaderboardText={i18next.t("countLeaderboardText")}
-          />
-        </Container>
-      </AppContext.Provider>
+      <ErrorBoundary>
+        {/* @ts-expect-error preact/compat and JSX factory type issue workaround */}
+        <AppContext.Provider value={state}>
+          <ConnectionStatus />
+          <Container>
+            <Header />
+            <Button
+              buttonHandler={this.onChangeButtonPhase.bind(this)}
+              arrowsHandler={this.onChangeButtonType.bind(this)}
+            />
+            <Footer
+              placeActiveText={i18next.t("placeActiveText")}
+              placeLeaderboardText={i18next.t("placeLeaderboardText")}
+              countActiveText={i18next.t("countActiveText")}
+              countLeaderboardText={i18next.t("countLeaderboardText")}
+            />
+          </Container>
+        </AppContext.Provider>
+      </ErrorBoundary>
     );
   }
 }
