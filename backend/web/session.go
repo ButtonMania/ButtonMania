@@ -301,7 +301,7 @@ func (s *GameSession) closeGameSession() error {
 	gameplayCtx := s.ctx
 	clientId := s.room.ClientID
 	roodId := s.room.RoomID
-	defer s.room.RemoveGameSession(s.userID)
+	defer s.room.RemoveGameSession(s.userID, s)
 
 	if gameplayCtx != nil {
 		record := protocol.NewGameplayRecord(*gameplayCtx)
@@ -348,7 +348,9 @@ func (s *GameSession) closeGameSession() error {
 
 // startGameSession starts a new game session.
 func (s *GameSession) startGameSession() (*protocol.GameplayContext, error) {
-	if s.room.HasGameSession(s.userID) {
+	// Claim the slot up front: checking first and registering later would let
+	// a second connection for the same user slip in between the two steps.
+	if !s.room.TryAddGameSession(s.userID, s) {
 		return nil, ErrGameSessionAlreadyExists
 	}
 
@@ -377,9 +379,7 @@ func (s *GameSession) startGameSession() (*protocol.GameplayContext, error) {
 			return nil, err
 		}
 	}
-	// Add session to room
 	s.ctx = &gameplayCtx
-	s.room.AddGameSession(s.userID, s)
 
 	err = s.writeNetworkMessage(
 		&gameplayCtx,
@@ -416,7 +416,7 @@ func (s *GameSession) MaintainGameSession() error {
 				s.ctx,
 				updatedGameplayCtx,
 			)
-			if err != nil || s.ctx.ButtonPhase == protocol.Release || s.room.closed {
+			if err != nil || s.ctx.ButtonPhase == protocol.Release || s.room.IsClosed() {
 				break
 			}
 		}

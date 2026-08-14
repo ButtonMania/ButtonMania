@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 	"strconv"
+	"sync"
 	"time"
 
 	"buttonmania.win/conf"
@@ -48,7 +49,42 @@ type Web struct {
 	store    sessions.Store
 	upgrader websocket.Upgrader
 	clients  []protocol.ClientID
-	rooms    map[protocol.RoomKey]*GameRoom
+	debug    bool
+
+	// mu guards rooms, which handlers create, look up and delete concurrently.
+	mu    sync.RWMutex
+	rooms map[protocol.RoomKey]*GameRoom
+}
+
+// getRoom looks up a room by its key.
+func (w *Web) getRoom(key protocol.RoomKey) (*GameRoom, bool) {
+	w.mu.RLock()
+	defer w.mu.RUnlock()
+	room, exists := w.rooms[key]
+	return room, exists
+}
+
+// addRoom registers a room and reports whether it was added. It fails when a
+// room with the same key already exists.
+func (w *Web) addRoom(key protocol.RoomKey, room *GameRoom) bool {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	if _, exists := w.rooms[key]; exists {
+		return false
+	}
+	w.rooms[key] = room
+	return true
+}
+
+// removeRoom unregisters a room and returns it, if it was present.
+func (w *Web) removeRoom(key protocol.RoomKey) (*GameRoom, bool) {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	room, exists := w.rooms[key]
+	if exists {
+		delete(w.rooms, key)
+	}
+	return room, exists
 }
 
 // NewWeb creates a new Web instance.
@@ -106,6 +142,9 @@ func NewWeb(
 
 	// Initialize user created game rooms
 	customRooms, err := db.ListCustomGameRooms()
+	if err != nil {
+		return nil, err
+	}
 	for _, roomKey := range customRooms {
 		rooms[roomKey], _ = NewGameRoom(roomKey.V1, roomKey.V2, db, nil)
 	}
@@ -139,16 +178,17 @@ func NewWeb(
 		store:    store,
 		upgrader: upgrader,
 		clients:  clients,
+		debug:    debug,
 		rooms:    rooms,
-	}, err
+	}, nil
 }
 
-//	@title			ButtonMania API
-//	@version		1.0
-//	@contact.name	ButtonMania Team
-//	@contact.email	team@buttonmania.win
-//	@host			buttonmania.win
-//	@BasePath		/
+// @title			ButtonMania API
+// @version		1.0
+// @contact.name	ButtonMania Team
+// @contact.email	team@buttonmania.win
+// @host			buttonmania.win
+// @BasePath		/
 func (w *Web) Run() error {
 	serverPort := w.ctx.Value(KeyServerPort).(int)
 	serverTLSCert := w.ctx.Value(KeyServerTLSCert).(string)

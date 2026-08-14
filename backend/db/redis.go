@@ -406,13 +406,27 @@ func (r *Redis) listCustomGameRooms() ([]protocol.RoomKey, error) {
 	return roomList, err
 }
 
+// removeOwnedRoomScript deletes a room only when it belongs to the caller, so
+// the ownership check and the delete cannot be interleaved by another request.
+// Returns 1 on delete, 0 when the room is not owned, -1 when it does not exist.
+var removeOwnedRoomScript = redis.NewScript(`
+	local owner = redis.call('HGET', KEYS[1], ARGV[1])
+	if not owner then
+		return -1
+	end
+	if owner ~= ARGV[2] then
+		return 0
+	end
+	redis.call('HDEL', KEYS[1], ARGV[1])
+	return 1
+`)
+
 // add new user's custom game room.
 func (r *Redis) createCustomRoom(
 	clientId protocol.ClientID,
 	roomId protocol.RoomID,
 	userID protocol.UserID,
 ) error {
-	var err error
 	roomIdStr := string(roomId)
 	userIdStr := string(userID)
 	customRoomKey := fmt.Sprintf(
@@ -420,25 +434,20 @@ func (r *Redis) createCustomRoom(
 		clientId,
 		RedisKeyCustomRooms,
 	)
-	// Check if room already exist
-	roomInRedis, err := r.client.HExists(
+	// Create the room only if it does not exist yet, in a single operation.
+	created, err := r.client.HSetNX(
 		r.ctx,
 		customRoomKey,
 		roomIdStr,
+		userIdStr,
 	).Result()
-	if roomInRedis {
-		err = errors.New("room exist")
+	if err != nil {
+		return err
 	}
-	// Create new room
-	if err == nil {
-		_, err = r.client.HSet(
-			r.ctx,
-			customRoomKey,
-			roomIdStr,
-			userIdStr,
-		).Result()
+	if !created {
+		return ErrRoomExists
 	}
-	return err
+	return nil
 }
 
 // remove user's custom game room.
@@ -447,7 +456,6 @@ func (r *Redis) removeCustomRoom(
 	roomId protocol.RoomID,
 	userID protocol.UserID,
 ) error {
-	var err error
 	roomIdStr := string(roomId)
 	userIdStr := string(userID)
 	customRoomKey := fmt.Sprintf(
@@ -455,28 +463,23 @@ func (r *Redis) removeCustomRoom(
 		clientId,
 		RedisKeyCustomRooms,
 	)
-	// Check if room exist and belongs to user
-	roomInRedis, err := r.client.HGet(
+	result, err := removeOwnedRoomScript.Run(
 		r.ctx,
-		customRoomKey,
+		r.client,
+		[]string{customRoomKey},
 		roomIdStr,
-	).Result()
-	if roomInRedis == "" {
-		err = errors.New("room not exist")
-	}
-	if roomInRedis != userIdStr {
-		err = errors.New("room does not belong to the user")
-	}
+		userIdStr,
+	).Int64()
 	if err != nil {
-		return nil
+		return err
 	}
-	// Remove record
-	_, err = r.client.HDel(
-		r.ctx,
-		customRoomKey,
-		roomIdStr,
-	).Result()
-	return err
+	switch result {
+	case -1:
+		return ErrRoomNotExist
+	case 0:
+		return ErrRoomNotOwned
+	}
+	return nil
 }
 
 // init user's chat consumer group
@@ -564,15 +567,21 @@ func (r *Redis) popChatMessage(
 	if err == nil {
 		for _, s := range result {
 			for _, message := range s.Messages {
-				message_ := message.Values["Message"].(string)
-				userid_ := protocol.UserID(message.Values["UserID"].(string))
+				// Stream values are untyped: a malformed entry must not panic
+				// the session goroutine, which would take the process down.
+				message_, msgOk := message.Values["Message"].(string)
+				userIdRaw, userOk := message.Values["UserID"].(string)
 				err = r.client.XAck(
 					r.ctx,
 					streamKey,
 					string(roomId),
 					message.ID,
 				).Err()
+				if !msgOk || !userOk {
+					continue
+				}
 
+				userid_ := protocol.UserID(userIdRaw)
 				if userid_ != userId {
 					msg.Message = message_
 					msg.UserID = userid_

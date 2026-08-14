@@ -2,6 +2,7 @@ package web
 
 import (
 	"errors"
+	"sync"
 
 	"buttonmania.win/db"
 	"buttonmania.win/localization"
@@ -15,6 +16,10 @@ type GameRoom struct {
 	RoomID   protocol.RoomID
 	MsgLoc   *localization.MessagesLocalization
 	DB       *db.DB
+
+	// mu guards sessions and closed, which are touched by every
+	// websocket handler goroutine serving this room.
+	mu       sync.RWMutex
 	sessions map[protocol.UserID]*GameSession
 	closed   bool
 }
@@ -63,18 +68,48 @@ func (r *GameRoom) Stats(payloadCount int64) (protocol.GameRoomStats, error) {
 
 // HasGameSession checks if a game session exists for a user.
 func (r *GameRoom) HasGameSession(userID protocol.UserID) bool {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
 	_, exists := r.sessions[userID]
 	return exists
 }
 
-// AddGameSession adds a game session to the room.
-func (r *GameRoom) AddGameSession(userID protocol.UserID, session *GameSession) {
+// TryAddGameSession registers a session for the user and reports whether it
+// was added. It fails when the user already has a session in this room, so
+// the check and the insert cannot be interleaved by a competing connection.
+func (r *GameRoom) TryAddGameSession(userID protocol.UserID, session *GameSession) bool {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if _, exists := r.sessions[userID]; exists {
+		return false
+	}
 	r.sessions[userID] = session
+	return true
 }
 
-// RemoveGameSession removes a game session from the room.
-func (r *GameRoom) RemoveGameSession(userID protocol.UserID) {
-	delete(r.sessions, userID)
+// RemoveGameSession removes the session from the room, but only when it is
+// still the one registered for that user. A connection that was rejected as a
+// duplicate must not evict the session that is actually running.
+func (r *GameRoom) RemoveGameSession(userID protocol.UserID, session *GameSession) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if current, exists := r.sessions[userID]; exists && current == session {
+		delete(r.sessions, userID)
+	}
+}
+
+// IsClosed reports whether the room has been closed.
+func (r *GameRoom) IsClosed() bool {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	return r.closed
+}
+
+// Close marks the room as closed, so running sessions wind down.
+func (r *GameRoom) Close() {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.closed = true
 }
 
 // MaintainGameSession creates and maintains a game session for a user.
