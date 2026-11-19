@@ -11,10 +11,12 @@ import (
 )
 
 const (
-	// MaxChatMessageLength is the maximum allowed length of a chat message.
-	MaxChatMessageLength = 500
+	// MaxChatMessageLength is the maximum allowed length of a chat message in runes.
+	MaxChatMessageLength = 200
 	// MaxMessageSize is the maximum WebSocket message size in bytes.
-	MaxMessageSize = 4096
+	MaxMessageSize = maxWsMessageBytes
+	readTimeout    = 60 * time.Second
+	writeTimeout   = 10 * time.Second
 )
 
 // Define session errors
@@ -22,6 +24,7 @@ var (
 	ErrGameSessionAlreadyExists        = errors.New("game session is already in progress")
 	ErrGameSessionFailedToStart        = errors.New("failed to start a new game session")
 	ErrFailedToReadGameSessionUpdate   = errors.New("failed to read the game session update")
+	ErrGameSessionRateLimitExceeded    = errors.New("message rate limit exceeded")
 	ErrGameSessionInvalidUpdate        = errors.New("invalid game session update received")
 	ErrGameSessionInvalidButtonPhase   = fmt.Errorf("%w: invalid button phase", ErrGameSessionInvalidUpdate)
 	ErrGameSessionInvalidPushTimestamp = fmt.Errorf("%w: invalid push timestamp", ErrGameSessionInvalidUpdate)
@@ -39,6 +42,7 @@ type GameSession struct {
 	ctx         *protocol.GameplayContext
 	ws          *websocket.Conn
 	room        *GameRoom
+	rateLimiter *RateLimiter
 	userID      protocol.UserID
 	payload     protocol.UserPayload
 	locale      protocol.UserLocale
@@ -93,6 +97,15 @@ func (s *GameSession) validateGameSessionUpdate(
 		}
 	}
 	return nil
+}
+
+// truncateChatMessage cuts a chat message to MaxChatMessageLength runes.
+func truncateChatMessage(message string) string {
+	runes := []rune(message)
+	if len(runes) <= MaxChatMessageLength {
+		return message
+	}
+	return string(runes[:MaxChatMessageLength])
 }
 
 // shouldSendNewRandomMessage determines if a new random message should be sent.
@@ -225,6 +238,9 @@ func (s *GameSession) writeNetworkMessage(
 	} else if gameplayCtx != nil {
 		msg = s.gameplayUpdate(gameplayCtx, chatMessage)
 	}
+	if err := s.ws.SetWriteDeadline(time.Now().Add(writeTimeout)); err != nil {
+		return err
+	}
 	return s.ws.WriteJSON(msg)
 }
 
@@ -254,12 +270,14 @@ func (s *GameSession) updateGameSession(
 	}
 
 	var chatMsg *protocol.ChatMessage
+	if gameplayMessageCtx.ChatMessage != nil && gameplayMessageCtx.ChatMessage.Message == "" {
+		gameplayMessageCtx.ChatMessage = nil
+	}
 	if gameplayMessageCtx.ChatMessage != nil {
-		// Validate chat message length
-		if len(gameplayMessageCtx.ChatMessage.Message) > MaxChatMessageLength {
-			gameplayMessageCtx.ChatMessage.Message = gameplayMessageCtx.ChatMessage.Message[:MaxChatMessageLength]
-		}
 		gameplayMessageCtx.ChatMessage.UserID = userId
+		gameplayMessageCtx.ChatMessage.Message = truncateChatMessage(
+			gameplayMessageCtx.ChatMessage.Message,
+		)
 		err = db.PushChatMessage(
 			clientId,
 			roodId,
@@ -313,7 +331,7 @@ func (s *GameSession) closeGameSession() error {
 	gameplayCtx := s.ctx
 	clientId := s.room.ClientID
 	roodId := s.room.RoomID
-	defer s.room.RemoveGameSession(s.userID)
+	defer s.room.RemoveGameSession(s.userID, s)
 
 	if gameplayCtx != nil {
 		record := protocol.NewGameplayRecord(*gameplayCtx)
@@ -348,19 +366,23 @@ func (s *GameSession) closeGameSession() error {
 		gameErrorPtr = &gameError
 	}
 
-	err = s.writeNetworkMessage(
+	if gameRecordPtr == nil && gameErrorPtr == nil {
+		return nil
+	}
+
+	return s.writeNetworkMessage(
 		nil,
 		gameRecordPtr,
 		gameErrorPtr,
 		nil,
 	)
-
-	return err
 }
 
 // startGameSession starts a new game session.
 func (s *GameSession) startGameSession() (*protocol.GameplayContext, error) {
-	if s.room.HasGameSession(s.userID) {
+	// Claim the slot up front: checking first and registering later would let
+	// a second connection for the same user slip in between the two steps.
+	if !s.room.TryAddGameSession(s.userID, s) {
 		return nil, ErrGameSessionAlreadyExists
 	}
 
@@ -389,9 +411,7 @@ func (s *GameSession) startGameSession() (*protocol.GameplayContext, error) {
 			return nil, err
 		}
 	}
-	// Add session to room
 	s.ctx = &gameplayCtx
-	s.room.AddGameSession(s.userID, s)
 
 	err = s.writeNetworkMessage(
 		&gameplayCtx,
@@ -427,15 +447,28 @@ func (s *GameSession) MaintainGameSession() error {
 		err = errors.Join(err, err_)
 	} else {
 		for {
+			if err_ := s.ws.SetReadDeadline(time.Now().Add(readTimeout)); err_ != nil {
+				err = errors.Join(err, err_)
+				break
+			}
+			updatedGameplayCtx = nil
 			if err_ := s.ws.ReadJSON(&updatedGameplayCtx); err_ != nil {
 				err = errors.Join(err, ErrFailedToReadGameSessionUpdate)
+				break
+			}
+			if updatedGameplayCtx == nil {
+				err = errors.Join(err, ErrGameSessionInvalidUpdate)
+				break
+			}
+			if s.rateLimiter != nil && !s.rateLimiter.AllowMessage(string(s.userID)) {
+				err = errors.Join(err, ErrGameSessionRateLimitExceeded)
 				break
 			}
 			s.ctx, err = s.updateGameSession(
 				s.ctx,
 				updatedGameplayCtx,
 			)
-			if err != nil || s.ctx.ButtonPhase == protocol.Release || s.room.closed {
+			if err != nil || s.ctx.ButtonPhase == protocol.Release || s.room.IsClosed() {
 				break
 			}
 		}

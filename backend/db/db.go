@@ -19,6 +19,13 @@ const (
 	KeyRedisTLS      ContextKey = "redistls"
 )
 
+// Define custom game room errors
+var (
+	ErrRoomExists   = errors.New("room already exists")
+	ErrRoomNotExist = errors.New("room does not exist")
+	ErrRoomNotOwned = errors.New("room does not belong to the user")
+)
+
 // DB represents the database client.
 type DB struct {
 	redis    *Redis

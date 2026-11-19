@@ -76,8 +76,12 @@ func main() {
 	defer cancel()
 
 	ctx = setupContext(ctx)
-	engine := gin.Default()
+	engine := gin.New()
+	engine.Use(gin.Recovery())
 	debug := gin.Mode() == gin.DebugMode
+	if debug {
+		engine.Use(gin.Logger())
+	}
 
 	// Initialize and check errors for each component
 	db, err := db.NewDB(ctx)
@@ -85,7 +89,11 @@ func main() {
 		slog.Error("failed to initialize db", "error", err)
 		os.Exit(1)
 	}
-	defer db.Close()
+	defer func() {
+		if err := db.Close(); err != nil {
+			slog.Error("error closing database", "error", err)
+		}
+	}()
 
 	bot, err := bot.NewBot(ctx, engine, db, debug)
 	if err != nil {
@@ -99,6 +107,14 @@ func main() {
 		os.Exit(1)
 	}
 
+	// Register web routes and bot webhook route on engine before serving HTTP traffic
+	web.RegisterRoutes()
+	botUpdates, botCleanup, err := bot.Setup()
+	if err != nil {
+		slog.Error("failed to setup bot", "error", err)
+		os.Exit(1)
+	}
+
 	// Start the web and bot components
 	go func() {
 		if err := web.Run(); err != nil {
@@ -106,7 +122,8 @@ func main() {
 		}
 	}()
 	go func() {
-		if err := bot.Run(); err != nil {
+		defer botCleanup()
+		if err := bot.RunWithUpdates(botUpdates); err != nil {
 			slog.Error("bot error", "error", err)
 		}
 	}()

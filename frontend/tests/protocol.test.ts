@@ -6,7 +6,7 @@ describe('Protocol Enums', () => {
     it('should have correct GameState values', () => {
         expect(GameState.Update).toBe(0);
         expect(GameState.Record).toBe(1);
-        expect(GameState.Error).toBe(3);
+        expect(GameState.Error).toBe(99);
     });
 
     it('should have correct ButtonType values', () => {

@@ -1,11 +1,17 @@
 import { MessageBus } from '../src/services/bus';
 
 class TestEvent {
-    constructor(public readonly value: string) {}
+    public readonly value: string;
+    constructor(value: string) {
+        this.value = value;
+    }
 }
 
 class AnotherEvent {
-    constructor(public readonly num: number) {}
+    public readonly num: number;
+    constructor(num: number) {
+        this.num = num;
+    }
 }
 
 describe('MessageBus', () => {

@@ -2,7 +2,7 @@
 export enum GameState {
     Update = 0,
     Record = 1,
-    Error = 3
+    Error = 99
 }
 
 export enum ButtonType {

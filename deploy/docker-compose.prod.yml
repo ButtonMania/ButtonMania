@@ -1,0 +1,98 @@
+services:
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    networks:
+      - buttonmania
+    depends_on:
+      - server
+    mem_limit: 64m
+
+  server:
+    image: ghcr.io/buttonmania/buttonmania:latest
+    restart: unless-stopped
+    env_file: .env
+    command:
+      - "--configpath=/app/config.json"
+      - "--staticpath=/app/static"
+      - "--serverport=8888"
+      - "--postgresurl=postgres://buttonmania:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@postgres:5432/buttonmania"
+      - "--redisaddress=redis:6379"
+      - "--redispassword=${REDIS_PASSWORD:?REDIS_PASSWORD is required}"
+      - "--redisdatabase=0"
+    networks:
+      - buttonmania
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    mem_limit: 128m
+
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: buttonmania
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      POSTGRES_DB: buttonmania
+    command:
+      - postgres
+      - -c
+      - shared_buffers=32MB
+      - -c
+      - work_mem=2MB
+      - -c
+      - max_connections=30
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - buttonmania
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U buttonmania -d buttonmania"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    mem_limit: 256m
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
+    command:
+      - redis-server
+      - --appendonly
+      - "yes"
+      - --maxmemory
+      - 64mb
+      - --maxmemory-policy
+      - noeviction
+      - --requirepass
+      - ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
+    volumes:
+      - redis-data:/data
+    networks:
+      - buttonmania
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a \"$REDIS_PASSWORD\" ping | grep -q PONG"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    mem_limit: 96m
+
+networks:
+  buttonmania:
+
+volumes:
+  caddy-data:
+  caddy-config:
+  postgres-data:
+  redis-data:

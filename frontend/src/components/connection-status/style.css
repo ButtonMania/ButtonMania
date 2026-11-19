@@ -8,7 +8,6 @@
     text-align: center;
     font-size: 0.875rem;
     font-weight: 500;
-    animation: slideDown 0.3s ease;
 }
 
 .online {
@@ -19,13 +18,4 @@
 .offline {
     background: rgba(244, 67, 54, 0.9);
     color: #fff;
-}
-
-@keyframes slideDown {
-    from {
-        transform: translateY(-100%);
-    }
-    to {
-        transform: translateY(0);
-    }
 }

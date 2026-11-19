@@ -34,6 +34,8 @@ const (
 	SessionTTLSeconds      int64 = 40
 	CleanupInterval              = 30 * time.Second
 	maxChatMessageInStream       = 5
+	scanBatchSize                = 100
+	chatReadCount                = 10
 )
 
 // NewRedis creates a new redis instance.
@@ -198,14 +200,11 @@ func (r *Redis) getOnlineUsersCount(
 		clientId,
 		RedisKeyActiveSessions,
 	)
-	keys, err := r.client.Keys(r.ctx, pattern).Result()
-	if err != nil {
-		return total, err
-	}
-	for _, key := range keys {
+	iter := r.client.Scan(r.ctx, 0, pattern, scanBatchSize).Iterator()
+	for iter.Next(r.ctx) {
 		count, err := r.client.ZCount(
 			r.ctx,
-			key,
+			iter.Val(),
 			"-inf",
 			"+inf",
 		).Result()
@@ -214,7 +213,7 @@ func (r *Redis) getOnlineUsersCount(
 		}
 		total += count
 	}
-	return total, nil
+	return total, iter.Err()
 }
 
 // sets the user's duration in active sessions.
@@ -403,18 +402,46 @@ func (r *Redis) listCustomGameRooms() ([]protocol.RoomKey, error) {
 			err = fmt.Errorf("invalid key found: %s", keyStr)
 			break
 		}
-		// Iterate over rooms in hash sets
+		// Iterate over rooms in hash sets, hscan yields field and value pairs
 		roomIter := r.client.HScan(r.ctx, iter.Val(), 0, "", 0).Iterator()
+		isRoomId := true
 		for roomIter.Next(r.ctx) {
+			if !isRoomId {
+				isRoomId = true
+				continue
+			}
+			isRoomId = false
 			// Add room key to slice
 			clientId := protocol.ClientID(keySplit[0])
 			roomId := protocol.RoomID(roomIter.Val())
 			key := protocol.RoomKey(tuple.New2(clientId, roomId))
 			roomList = append(roomList, key)
 		}
+		if roomIterErr := roomIter.Err(); roomIterErr != nil {
+			err = roomIterErr
+			break
+		}
+	}
+	if err == nil {
+		err = iter.Err()
 	}
 	return roomList, err
 }
+
+// removeOwnedRoomScript deletes a room only when it belongs to the caller, so
+// the ownership check and the delete cannot be interleaved by another request.
+// Returns 1 on delete, 0 when the room is not owned, -1 when it does not exist.
+var removeOwnedRoomScript = redis.NewScript(`
+	local owner = redis.call('HGET', KEYS[1], ARGV[1])
+	if not owner then
+		return -1
+	end
+	if owner ~= ARGV[2] then
+		return 0
+	end
+	redis.call('HDEL', KEYS[1], ARGV[1])
+	return 1
+`)
 
 // add new user's custom game room.
 func (r *Redis) createCustomRoom(
@@ -422,7 +449,6 @@ func (r *Redis) createCustomRoom(
 	roomId protocol.RoomID,
 	userID protocol.UserID,
 ) error {
-	var err error
 	roomIdStr := string(roomId)
 	userIdStr := string(userID)
 	customRoomKey := fmt.Sprintf(
@@ -430,25 +456,20 @@ func (r *Redis) createCustomRoom(
 		clientId,
 		RedisKeyCustomRooms,
 	)
-	// Check if room already exist
-	roomInRedis, err := r.client.HExists(
+	// Create the room only if it does not exist yet, in a single operation.
+	created, err := r.client.HSetNX(
 		r.ctx,
 		customRoomKey,
 		roomIdStr,
+		userIdStr,
 	).Result()
-	if roomInRedis {
-		err = errors.New("room exist")
+	if err != nil {
+		return err
 	}
-	// Create new room
-	if err == nil {
-		_, err = r.client.HSet(
-			r.ctx,
-			customRoomKey,
-			roomIdStr,
-			userIdStr,
-		).Result()
+	if !created {
+		return ErrRoomExists
 	}
-	return err
+	return nil
 }
 
 // remove user's custom game room.
@@ -457,7 +478,6 @@ func (r *Redis) removeCustomRoom(
 	roomId protocol.RoomID,
 	userID protocol.UserID,
 ) error {
-	var err error
 	roomIdStr := string(roomId)
 	userIdStr := string(userID)
 	customRoomKey := fmt.Sprintf(
@@ -465,28 +485,23 @@ func (r *Redis) removeCustomRoom(
 		clientId,
 		RedisKeyCustomRooms,
 	)
-	// Check if room exist and belongs to user
-	roomInRedis, err := r.client.HGet(
+	result, err := removeOwnedRoomScript.Run(
 		r.ctx,
-		customRoomKey,
+		r.client,
+		[]string{customRoomKey},
 		roomIdStr,
-	).Result()
-	if roomInRedis == "" {
-		err = errors.New("room not exist")
-	}
-	if roomInRedis != userIdStr {
-		err = errors.New("room does not belong to the user")
-	}
+		userIdStr,
+	).Int64()
 	if err != nil {
-		return nil
+		return err
 	}
-	// Remove record
-	_, err = r.client.HDel(
-		r.ctx,
-		customRoomKey,
-		roomIdStr,
-	).Result()
-	return err
+	switch result {
+	case -1:
+		return ErrRoomNotExist
+	case 0:
+		return ErrRoomNotOwned
+	}
+	return nil
 }
 
 // init user's chat consumer group
@@ -563,33 +578,36 @@ func (r *Redis) popChatMessage(
 		roomId,
 		RedisKeyChat,
 	)
+	// Block: -1 disables blocking, this runs on every gameplay update
 	result, err := r.client.XReadGroup(r.ctx, &redis.XReadGroupArgs{
 		Streams:  []string{streamKey, ">"},
 		Group:    string(roomId),
 		Consumer: string(userId),
-		Block:    time.Second,
-		Count:    10,
+		Block:    -1,
+		Count:    chatReadCount,
 		NoAck:    true,
 	}).Result()
-	if err == nil {
-		for _, s := range result {
-			for _, message := range s.Messages {
-				message_ := message.Values["Message"].(string)
-				userid_ := protocol.UserID(message.Values["UserID"].(string))
-				err = r.client.XAck(
-					r.ctx,
-					streamKey,
-					string(roomId),
-					message.ID,
-				).Err()
+	if errors.Is(err, redis.Nil) {
+		return msg, nil
+	}
+	if err != nil {
+		return msg, err
+	}
+	for _, s := range result {
+		for _, message := range s.Messages {
+			message_, msgOk := message.Values["Message"].(string)
+			userIdRaw, userOk := message.Values["UserID"].(string)
+			if !msgOk || !userOk {
+				continue
+			}
 
-				if userid_ != userId {
-					msg.Message = message_
-					msg.UserID = userid_
-					break
-				}
+			userid_ := protocol.UserID(userIdRaw)
+			if userid_ != userId {
+				msg.Message = message_
+				msg.UserID = userid_
+				return msg, nil
 			}
 		}
 	}
-	return msg, err
+	return msg, nil
 }

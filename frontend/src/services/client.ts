@@ -1,4 +1,4 @@
-import { ButtonType, GameState } from "../protocol/enums";
+import { ButtonPhase, ButtonType, GameState } from "../protocol/enums";
 import { ConnectEvent, DisconnectEvent } from "../protocol/internal";
 import {ErrorResponse, GameplayMessage, RecordResponse, RoomStats, UpdateResponse} from "../protocol/respons";
 
@@ -45,6 +45,7 @@ export class NetworkClient {
     }
 
     private onWsOpen(_: Event): void {
+        this.reconnectAttempts = 0;
         MessageBus.raise(new ConnectEvent()).catch(console.log);
     }
 
@@ -86,10 +87,12 @@ export class NetworkClient {
                 break;
             }
             case GameState.Record: {
+                this.shouldReconnect = false;
                 MessageBus.raise(plainToInstance(RecordResponse, raw as object)).catch(console.log);
                 break;
             }
             case GameState.Error: {
+                this.shouldReconnect = false;
                 MessageBus.raise(plainToInstance(ErrorResponse, raw as object)).catch(console.log);
                 break;
             }
@@ -98,6 +101,9 @@ export class NetworkClient {
 
     private sendMessage(message: GameplayMessageRequest): void {
         try {
+            if (message.buttonPhase === ButtonPhase.Release) {
+                this.shouldReconnect = false;
+            }
             if (this.ws != null && this.ws.readyState === WebSocket.OPEN) {
                 this.ws!.send(JSON.stringify(message));
             }

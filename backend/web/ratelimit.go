@@ -1,6 +1,7 @@
 package web
 
 import (
+	"context"
 	"log/slog"
 	"net/http"
 	"sync"
@@ -25,7 +26,10 @@ type rateBucket struct {
 }
 
 // NewRateLimiter creates a new RateLimiter.
-func NewRateLimiter(maxConnPerUser, maxMsgPerSec int) *RateLimiter {
+func NewRateLimiter(ctx context.Context, maxConnPerUser, maxMsgPerSec int) *RateLimiter {
+	if ctx == nil {
+		ctx = context.Background()
+	}
 	rl := &RateLimiter{
 		connections:     make(map[string]int),
 		maxConnPerUser:  maxConnPerUser,
@@ -33,7 +37,7 @@ func NewRateLimiter(maxConnPerUser, maxMsgPerSec int) *RateLimiter {
 		messageCounts:   make(map[string]*rateBucket),
 		cleanupInterval: 5 * time.Minute,
 	}
-	go rl.cleanupLoop()
+	go rl.cleanupLoop(ctx)
 	return rl
 }
 
@@ -98,38 +102,51 @@ func (rl *RateLimiter) AllowMessage(userID string) bool {
 	return true
 }
 
-func (rl *RateLimiter) cleanupLoop() {
+func (rl *RateLimiter) cleanupLoop(ctx context.Context) {
 	ticker := time.NewTicker(rl.cleanupInterval)
 	defer ticker.Stop()
-	for range ticker.C {
-		rl.mu.Lock()
-		now := time.Now()
-		for k, v := range rl.messageCounts {
-			if now.Sub(v.lastTime) > rl.cleanupInterval {
-				delete(rl.messageCounts, k)
+	for {
+		select {
+		case <-ticker.C:
+			rl.mu.Lock()
+			now := time.Now()
+			for k, v := range rl.messageCounts {
+				if now.Sub(v.lastTime) > rl.cleanupInterval {
+					delete(rl.messageCounts, k)
+				}
 			}
+			rl.mu.Unlock()
+		case <-ctx.Done():
+			return
 		}
-		rl.mu.Unlock()
 	}
 }
 
 // RateLimitMiddleware returns a gin middleware that rate-limits requests by IP.
-func RateLimitMiddleware(requestsPerMinute int) gin.HandlerFunc {
+func RateLimitMiddleware(ctx context.Context, requestsPerMinute int) gin.HandlerFunc {
+	if ctx == nil {
+		ctx = context.Background()
+	}
 	var mu sync.Mutex
 	requests := make(map[string]*rateBucket)
 
 	go func() {
 		ticker := time.NewTicker(time.Minute)
 		defer ticker.Stop()
-		for range ticker.C {
-			mu.Lock()
-			now := time.Now()
-			for k, v := range requests {
-				if now.Sub(v.lastTime) > time.Minute {
-					delete(requests, k)
+		for {
+			select {
+			case <-ticker.C:
+				mu.Lock()
+				now := time.Now()
+				for k, v := range requests {
+					if now.Sub(v.lastTime) > time.Minute {
+						delete(requests, k)
+					}
 				}
+				mu.Unlock()
+			case <-ctx.Done():
+				return
 			}
-			mu.Unlock()
 		}
 	}()
 

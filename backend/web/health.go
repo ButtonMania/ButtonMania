@@ -24,7 +24,7 @@ func HealthHandler(database *db.DB) gin.HandlerFunc {
 
 		// Check Redis
 		if err := database.PingRedis(); err != nil {
-			status.Services["redis"] = "unhealthy: " + err.Error()
+			status.Services["redis"] = "unhealthy"
 			status.Status = "degraded"
 			httpStatus = http.StatusServiceUnavailable
 		} else {
@@ -33,7 +33,7 @@ func HealthHandler(database *db.DB) gin.HandlerFunc {
 
 		// Check Postgres
 		if err := database.PingPostgres(); err != nil {
-			status.Services["postgres"] = "unhealthy: " + err.Error()
+			status.Services["postgres"] = "unhealthy"
 			status.Status = "degraded"
 			httpStatus = http.StatusServiceUnavailable
 		} else {
