@@ -1,6 +1,8 @@
 import { ButtonPhase } from "./enums";
 
 export class GameplayMessageRequest {
-    constructor(public readonly buttonPhase: ButtonPhase) {
+    public readonly buttonPhase: ButtonPhase;
+    constructor(buttonPhase: ButtonPhase) {
+        this.buttonPhase = buttonPhase;
     }
 }

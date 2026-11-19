@@ -19,6 +19,13 @@ const (
 	KeyRedisTLS      ContextKey = "redistls"
 )
 
+// Define custom game room errors
+var (
+	ErrRoomExists   = errors.New("room already exists")
+	ErrRoomNotExist = errors.New("room does not exist")
+	ErrRoomNotOwned = errors.New("room does not belong to the user")
+)
+
 // DB represents the database client.
 type DB struct {
 	redis    *Redis
@@ -40,6 +47,16 @@ func (db *DB) Close() error {
 	rErr := db.redis.close()
 	pErr := db.postgres.close()
 	return errors.Join(rErr, pErr)
+}
+
+// PingRedis checks Redis connectivity.
+func (db *DB) PingRedis() error {
+	return db.redis.client.Ping(db.redis.ctx).Err()
+}
+
+// PingPostgres checks Postgres connectivity.
+func (db *DB) PingPostgres() error {
+	return db.postgres.pool.Ping(db.postgres.ctx)
 }
 
 // AddRecordToLeaderboard adds a gameplay record to the leaderboard.

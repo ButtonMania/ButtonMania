@@ -16,41 +16,59 @@ type Postgres struct {
 	pool *pgxpool.Pool
 }
 
+// schemaStatements contains idempotent statements to create and migrate schema.
+var schemaStatements = []string{
+	`CREATE TABLE IF NOT EXISTS records (
+		id SERIAL PRIMARY KEY,
+		user_id VARCHAR(36) NOT NULL,
+		client_id VARCHAR(36) NOT NULL,
+		room_id VARCHAR(36) NOT NULL,
+		ts TIMESTAMP NOT NULL DEFAULT current_timestamp,
+		duration BIGINT NOT NULL,
+		UNIQUE (user_id, client_id, room_id, ts, duration)
+	);`,
+	// migrate duration from SERIAL, which caps values at int32
+	`DO $$
+	BEGIN
+		IF EXISTS (
+			SELECT 1 FROM information_schema.columns
+			WHERE table_name = 'records'
+			AND column_name = 'duration'
+			AND data_type <> 'bigint'
+		) THEN
+			ALTER TABLE records ALTER COLUMN duration DROP DEFAULT;
+			ALTER TABLE records ALTER COLUMN duration TYPE BIGINT;
+		END IF;
+	END $$;`,
+	`DROP SEQUENCE IF EXISTS records_duration_seq;`,
+	// composite indexes, leaderboard queries always filter by client and room
+	`CREATE INDEX IF NOT EXISTS idx_records_room_duration
+		ON records(client_id, room_id, duration DESC);`,
+	`CREATE INDEX IF NOT EXISTS idx_records_room_ts
+		ON records(client_id, room_id, ts DESC);`,
+	`CREATE INDEX IF NOT EXISTS idx_records_room_user
+		ON records(client_id, room_id, user_id, duration DESC);`,
+	// drop single column indexes, superseded by composite ones
+	`DROP INDEX IF EXISTS idx_user;`,
+	`DROP INDEX IF EXISTS idx_client;`,
+	`DROP INDEX IF EXISTS idx_room;`,
+	`DROP INDEX IF EXISTS idx_ts;`,
+	`DROP INDEX IF EXISTS idx_duration;`,
+}
+
 // NewPostgres creates a new postgres instance.
 func NewPostgres(ctx context.Context) (*Postgres, error) {
 	postgresurl, _ := ctx.Value(KeyPostgresUrl).(string)
 	pool, err := pgxpool.New(ctx, postgresurl)
+	if err != nil {
+		return nil, err
+	}
 
-	// create records table
-	_, createTableErr := pool.Exec(
-		ctx,
-		`CREATE TABLE IF NOT EXISTS records (
-			id SERIAL PRIMARY KEY, 
-			user_id VARCHAR(36) NOT NULL,
-			client_id VARCHAR(36) NOT NULL,
-			room_id VARCHAR(36) NOT NULL,
-			ts TIMESTAMP NOT NULL DEFAULT current_timestamp,
-			duration SERIAL NOT NULL,
-			UNIQUE (user_id, client_id, room_id, ts, duration)
-		);`,
-	)
-
-	// create user column index
-	_, createUserIdxErr := pool.Exec(ctx, "CREATE INDEX IF NOT EXISTS idx_user ON records(user_id)")
-	_, createClientIdxErr := pool.Exec(ctx, "CREATE INDEX IF NOT EXISTS idx_client ON records(client_id)")
-	_, createRoomIdxErr := pool.Exec(ctx, "CREATE INDEX IF NOT EXISTS idx_room ON records(room_id)")
-	_, createTsIdxErr := pool.Exec(ctx, "CREATE INDEX IF NOT EXISTS idx_ts ON records(ts)")
-	_, createDurationIdxErr := pool.Exec(ctx, "CREATE INDEX IF NOT EXISTS idx_duration ON records(duration)")
-
-	err = errors.Join(
-		err,
-		createTableErr,
-		createUserIdxErr,
-		createClientIdxErr,
-		createRoomIdxErr,
-		createTsIdxErr,
-		createDurationIdxErr,
-	)
+	for _, statement := range schemaStatements {
+		if _, execErr := pool.Exec(ctx, statement); execErr != nil {
+			err = errors.Join(err, execErr)
+		}
+	}
 
 	return &Postgres{
 		ctx:  ctx,
@@ -116,11 +134,11 @@ func (p *Postgres) getUserPlaceInLeaderboard(
 	var count int64
 	err := p.pool.QueryRow(
 		p.ctx,
-		`SELECT COALESCE(count(*), 0)
-		FROM records 
-		WHERE duration > (
+		`SELECT COALESCE(count(DISTINCT user_id), 0)
+		FROM records
+		WHERE client_id=$1 AND room_id=$2 AND duration > (
 			SELECT COALESCE(MAX(duration), 0)
-			FROM records 
+			FROM records
 			WHERE client_id=$1 AND room_id=$2 AND user_id=$3
 		)`,
 		clientId,

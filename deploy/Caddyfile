@@ -1,0 +1,4 @@
+buttonmania.win, buttonmania.top {
+	encode gzip
+	reverse_proxy server:8888
+}

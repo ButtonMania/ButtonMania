@@ -4,12 +4,16 @@ import (
 	"context"
 	"net/http"
 	"strconv"
+	"sync"
 	"time"
 
 	"buttonmania.win/conf"
 	"buttonmania.win/db"
 	"buttonmania.win/localization"
 	"buttonmania.win/protocol"
+	"crypto/rand"
+	"encoding/hex"
+	"log/slog"
 	"github.com/barweiss/go-tuple"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-contrib/gzip"
@@ -41,14 +45,49 @@ const (
 )
 
 type Web struct {
-	ctx      context.Context
-	conf     conf.Conf
-	db       *db.DB
-	engine   *gin.Engine
-	store    sessions.Store
-	upgrader websocket.Upgrader
-	clients  []protocol.ClientID
-	rooms    map[protocol.RoomKey]*GameRoom
+	ctx         context.Context
+	conf        conf.Conf
+	db          *db.DB
+	engine      *gin.Engine
+	store       sessions.Store
+	upgrader    websocket.Upgrader
+	clients     []protocol.ClientID
+	debug       bool
+	rateLimiter *RateLimiter
+	metrics     *Metrics
+
+	mu    sync.RWMutex
+	rooms map[protocol.RoomKey]*GameRoom
+}
+
+// getRoom retrieves the room by its key.
+func (w *Web) getRoom(key protocol.RoomKey) (*GameRoom, bool) {
+	w.mu.RLock()
+	defer w.mu.RUnlock()
+	room, exists := w.rooms[key]
+	return room, exists
+}
+
+// addRoom adds the room, unless one with the same key exists.
+func (w *Web) addRoom(key protocol.RoomKey, room *GameRoom) bool {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	if _, exists := w.rooms[key]; exists {
+		return false
+	}
+	w.rooms[key] = room
+	return true
+}
+
+// removeRoom removes the room and returns it, if it was present.
+func (w *Web) removeRoom(key protocol.RoomKey) (*GameRoom, bool) {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	room, exists := w.rooms[key]
+	if exists {
+		delete(w.rooms, key)
+	}
+	return room, exists
 }
 
 // NewWeb creates a new Web instance.
@@ -64,10 +103,23 @@ func NewWeb(
 	sessionSecret := ctx.Value(KeySessionSecret).(string)
 	allowedOrigins := ctx.Value(KeyAllowedOrigins).(string)
 
-	// Initialize router, session storage
+	if sessionSecret == "" || sessionSecret == "secret" {
+		if !debug {
+			var raw [32]byte
+			if _, err := rand.Read(raw[:]); err != nil {
+				return nil, err
+			}
+			sessionSecret = hex.EncodeToString(raw[:])
+			slog.Warn("SESSION_SECRET not set, generated ephemeral secret for this run")
+		}
+	}
+
+	// Initialize router, session storage, rate limiter, metrics
 	store := cookie.NewStore([]byte(sessionSecret))
 	rooms := make(map[protocol.RoomKey]*GameRoom)
 	clients := make([]protocol.ClientID, 0)
+	rateLimiter := NewRateLimiter(ctx, 3, 20) // max 3 WS connections per user, 20 msgs/sec
+	metrics := NewMetrics()
 
 	// Initialize WebSocket upgrader
 	originChecker := glob.MustCompile(allowedOrigins)
@@ -106,13 +158,23 @@ func NewWeb(
 
 	// Initialize user created game rooms
 	customRooms, err := db.ListCustomGameRooms()
+	if err != nil {
+		return nil, err
+	}
 	for _, roomKey := range customRooms {
 		rooms[roomKey], _ = NewGameRoom(roomKey.V1, roomKey.V2, db, nil)
 	}
 
 	// Apply middlewares and other router parameters
-	engine.SetTrustedProxies(nil)
+	if err := engine.SetTrustedProxies(nil); err != nil {
+		return nil, err
+	}
 	engine.Use(static.Serve("/", static.LocalFile(staticPath, true)))
+	engine.Use(func(c *gin.Context) {
+		c.Header("X-Content-Type-Options", "nosniff")
+		c.Header("Referrer-Policy", "no-referrer")
+		c.Next()
+	})
 	engine.Use(sessions.Sessions(sessionName, store))
 	engine.Use(gzip.Gzip(gzip.DefaultCompression))
 	engine.Use(cors.New(corsConfig))
@@ -132,43 +194,71 @@ func NewWeb(
 	}))
 
 	return &Web{
-		ctx:      ctx,
-		conf:     conf,
-		db:       db,
-		engine:   engine,
-		store:    store,
-		upgrader: upgrader,
-		clients:  clients,
-		rooms:    rooms,
-	}, err
+		ctx:         ctx,
+		conf:        conf,
+		db:          db,
+		engine:      engine,
+		store:       store,
+		upgrader:    upgrader,
+		clients:     clients,
+		debug:       debug,
+		rooms:       rooms,
+		rateLimiter: rateLimiter,
+		metrics:     metrics,
+	}, nil
 }
 
-//	@title			ButtonMania API
-//	@version		1.0
-//	@contact.name	ButtonMania Team
-//	@contact.email	team@buttonmania.win
-//	@host			buttonmania.win
-//	@BasePath		/
-func (w *Web) Run() error {
-	serverPort := w.ctx.Value(KeyServerPort).(int)
-	serverTLSCert := w.ctx.Value(KeyServerTLSCert).(string)
-	serverTLSKey := w.ctx.Value(KeyServerTLSKey).(string)
+// RegisterRoutes binds handlers to the router.
+func (w *Web) RegisterRoutes() {
+	if w.metrics != nil {
+		w.engine.Use(w.metrics.MetricsMiddleware())
+	}
+	w.engine.Use(RateLimitMiddleware(w.ctx, 120)) // 120 requests per minute per IP
 
-	w.engine.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+	if w.debug {
+		w.engine.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+	}
 	w.engine.GET("/ws", w.wsHandler)
 	w.engine.GET("/api/room/create", w.createRoomHandler)
 	w.engine.GET("/api/room/delete", w.deleteRoomHandler)
 	w.engine.GET("/api/room/stats", w.statsRoomHandler)
 	w.engine.GET("/api/stats", w.statsHandler)
+	w.engine.GET("/health", HealthHandler(w.db))
+}
 
-	if len(serverTLSCert) > 0 && len(serverTLSKey) > 0 {
-		return w.engine.RunTLS(
-			":"+strconv.Itoa(serverPort),
-			serverTLSCert,
-			serverTLSKey,
-		)
+// @title			ButtonMania API
+// @version		1.0
+// @contact.name	ButtonMania Team
+// @contact.email	team@buttonmania.win
+// @host			buttonmania.win
+// @BasePath		/
+func (w *Web) Run() error {
+	serverPort := w.ctx.Value(KeyServerPort).(int)
+	serverTLSCert := w.ctx.Value(KeyServerTLSCert).(string)
+	serverTLSKey := w.ctx.Value(KeyServerTLSKey).(string)
+
+	server := &http.Server{
+		Addr:              ":" + strconv.Itoa(serverPort),
+		Handler:           w.engine,
+		ReadHeaderTimeout: 10 * time.Second,
+		IdleTimeout:       120 * time.Second,
 	}
 
-	// Run starts the web server.
-	return w.engine.Run(":" + strconv.Itoa(serverPort))
+	go func() {
+		<-w.ctx.Done()
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		_ = server.Shutdown(shutdownCtx)
+	}()
+
+	var err error
+	if len(serverTLSCert) > 0 && len(serverTLSKey) > 0 {
+		err = server.ListenAndServeTLS(serverTLSCert, serverTLSKey)
+	} else {
+		err = server.ListenAndServe()
+	}
+	if err == http.ErrServerClosed {
+		return nil
+	}
+	return err
 }

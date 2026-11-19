@@ -2,14 +2,15 @@ package web
 
 import (
 	"errors"
-	"fmt"
-	"log"
+	"log/slog"
 	"net/http"
 	"slices"
 	"strconv"
+	"strings"
 	"time"
 
 	"buttonmania.win/bot"
+	"buttonmania.win/db"
 	"buttonmania.win/protocol"
 	"github.com/gin-gonic/gin"
 
@@ -19,73 +20,111 @@ import (
 
 const (
 	userPayloadCountInStats = 3
+	maxRoomIdLength         = 36
+	maxUserPayloadLength    = 512
+	maxWsMessageBytes       = 4 * 1024
+)
+
+// Define authentication errors
+var (
+	ErrInitDataMissing = errors.New("telegram init data not provided")
+	ErrInitDataInvalid = errors.New("invalid telegram init data")
+	ErrInitDataNoUser  = errors.New("telegram init data contains no user")
 )
 
 // parseTgInitData parse string to telegram InitData structure
 func (w *Web) parseTgInitData(initDataStr string) (*initdata.InitData, error) {
 	token := w.ctx.Value(bot.KeyTelegramToken).(string)
 	expIn := 24 * time.Hour
-	// Validate telegram init data
-	if err := initdata.Validate(initDataStr, token, expIn); err != nil && gin.Mode() == gin.ReleaseMode {
-		err = errors.Join(errors.New("invalid telegram init data"), err)
-		return nil, err
+	// Validate telegram init data. The signature check is only skipped in
+	// debug mode, so a development client can be used without a bot token.
+	if err := initdata.Validate(initDataStr, token, expIn); err != nil && !w.debug {
+		slog.Warn("invalid telegram init data", "error", err)
+		return nil, errors.Join(ErrInitDataInvalid, err)
 	}
 	// Parse telegram init data
 	initData, err := initdata.Parse(initDataStr)
 	if err != nil {
-		err = errors.Join(errors.New("failed to parse telegram init data"), err)
-		return nil, err
+		return nil, errors.Join(ErrInitDataInvalid, err)
 	}
-	return initData, err
+	if initData.User == nil {
+		return nil, ErrInitDataNoUser
+	}
+	return initData, nil
+}
+
+// authenticate resolves the caller identity from signed telegram init data.
+// The user id is never taken from a plain query parameter outside debug mode:
+// doing so would let anyone act as any user.
+func (w *Web) authenticate(c *gin.Context) (protocol.UserID, protocol.UserLocale, error) {
+	initDataStr := c.Query("initData")
+	if len(initDataStr) == 0 {
+		if w.debug {
+			userIdStr := c.Query("userId")
+			if len(userIdStr) == 0 {
+				return "", "", ErrInitDataMissing
+			}
+			return protocol.UserID(userIdStr), protocol.NewUserLocale(c.Query("locale")), nil
+		}
+		return "", "", ErrInitDataMissing
+	}
+
+	initData, err := w.parseTgInitData(initDataStr)
+	if err != nil {
+		return "", "", err
+	}
+
+	userID := protocol.UserID(strconv.FormatInt(initData.User.ID, 10))
+	locale := protocol.NewUserLocale(initData.User.LanguageCode)
+	return userID, locale, nil
+}
+
+// validateRoomId checks the room id and writes an error response if invalid.
+func validateRoomId(c *gin.Context, roomIdStr string) bool {
+	if roomIdStr == "" {
+		http.Error(c.Writer, "Room id not provided", http.StatusBadRequest)
+		return false
+	}
+	if len(roomIdStr) > maxRoomIdLength {
+		http.Error(c.Writer, "Room id is too long", http.StatusBadRequest)
+		return false
+	}
+	if strings.ContainsAny(roomIdStr, ":*?[]") {
+		http.Error(c.Writer, "Room id contains invalid characters", http.StatusBadRequest)
+		return false
+	}
+	return true
 }
 
 // @Summary	Handles WebSocket connections
 // @Param		clientId	query	string	true	"Client ID"
 // @Param		roomId		query	string	true	"Room ID"
-// @Param		userId		query	string	false	"User ID"
-// @Param		locale		query	string	false	"User locale"
 // @Param		payload		query	string	false	"User payload"
-// @Param		initData	query	string	false	"Telegram init data"
+// @Param		initData	query	string	true	"Telegram init data"
 // @Router		/ws [get]
 func (w *Web) wsHandler(c *gin.Context) {
 	clientIdStr := c.Query("clientId")
 	roomIdStr := c.Query("roomId")
-	userIdStr := c.Query("userId")
-	localeStr := c.Query("locale")
 	payloadStr := c.Query("payload")
-	initDataStr := c.Query("initData")
 
-	// Extract parameters from telegram init data
-	if len(initDataStr) > 0 {
-		initData, err := w.parseTgInitData(initDataStr)
-		if err != nil {
-			http.Error(c.Writer, err.Error(), http.StatusBadRequest)
-			return
-		}
-		userIdStr = strconv.FormatInt(initData.User.ID, 10)
-		localeStr = initData.User.LanguageCode
-	}
-
-	// Check userId
-	if len(userIdStr) == 0 {
-		http.Error(
-			c.Writer,
-			"User id not provided",
-			http.StatusNotFound,
-		)
+	userID, locale, err := w.authenticate(c)
+	if err != nil {
+		http.Error(c.Writer, err.Error(), http.StatusUnauthorized)
 		return
 	}
 
-	// Convert incoming paramters
-	userID := protocol.UserID(userIdStr)
+	// Convert incoming parameters
+	if len(payloadStr) > maxUserPayloadLength {
+		http.Error(c.Writer, "Payload is too long", http.StatusBadRequest)
+		return
+	}
 	payload := protocol.UserPayload(payloadStr)
-	locale := protocol.NewUserLocale(localeStr)
 	clientId := protocol.ClientID(clientIdStr)
 	roomId := protocol.RoomID(roomIdStr)
 	roomKey := protocol.RoomKey(tuple.New2(clientId, roomId))
 
 	// Search for room in map
-	room, exists := w.rooms[roomKey]
+	room, exists := w.getRoom(roomKey)
 	if !exists {
 		http.Error(
 			c.Writer,
@@ -95,16 +134,55 @@ func (w *Web) wsHandler(c *gin.Context) {
 		return
 	}
 
-	ws, err := w.upgrader.Upgrade(c.Writer, c.Request, nil)
-	if err != nil {
-		log.Println("Failed to create WebSocket connection", err)
-		http.Error(c.Writer, "Failed to create WebSocket connection", http.StatusInternalServerError)
+	// Rate limit: check per-user WebSocket connections
+	if w.rateLimiter != nil && !w.rateLimiter.AddConnection(string(userID)) {
+		http.Error(c.Writer, "Too many connections", http.StatusTooManyRequests)
 		return
 	}
-	defer ws.Close()
 
-	if err := room.MaintainGameSession(userID, payload, locale, ws); err != nil {
-		log.Println("Error occurred while maintaining the game session:", err)
+	ws, err := w.upgrader.Upgrade(c.Writer, c.Request, nil)
+	if err != nil {
+		if w.rateLimiter != nil {
+			w.rateLimiter.RemoveConnection(string(userID))
+		}
+		slog.Error("failed to create WebSocket connection",
+			"error", err,
+			"user_id", userID,
+		)
+		return
+	}
+	defer func() {
+		_ = ws.Close()
+		if w.rateLimiter != nil {
+			w.rateLimiter.RemoveConnection(string(userID))
+		}
+		if w.metrics != nil {
+			w.metrics.ActiveWSConns.Add(-1)
+			w.metrics.ActiveSessions.Add(-1)
+		}
+	}()
+	ws.SetReadLimit(maxWsMessageBytes)
+
+	if w.metrics != nil {
+		w.metrics.ActiveWSConns.Add(1)
+		w.metrics.ActiveSessions.Add(1)
+		w.metrics.TotalSessions.Add(1)
+	}
+
+	slog.Info("game session started",
+		"user_id", userID,
+		"client_id", clientId,
+		"room_id", roomId,
+	)
+
+	if err := room.MaintainGameSession(userID, payload, locale, ws, w.rateLimiter); err != nil {
+		slog.Warn("game session ended with error",
+			"error", err,
+			"user_id", userID,
+		)
+		if w.metrics != nil {
+			w.metrics.WebSocketErrors.Add(1)
+		}
 		return
 	}
 }
@@ -113,59 +191,28 @@ func (w *Web) wsHandler(c *gin.Context) {
 // @Produce	json
 // @Param		clientId	query	string	true	"Client ID"
 // @Param		roomId		query	string	true	"Room ID"
-// @Param		userId		query	string	false	"User ID"
-// @Param		initData	query	string	false	"Telegram init data"
+// @Param		initData	query	string	true	"Telegram init data"
 // @Success	200			"ok"
-// @Failure	400			"User id not provided"
 // @Failure	400			"Room id not provided"
 // @Failure	400			"Room id is too long"
 // @Failure	400			"Client not allowed"
 // @Failure	400			"Room exists"
+// @Failure	401			"Telegram init data not provided"
 // @Router		/api/room/create [get]
 func (w *Web) createRoomHandler(c *gin.Context) {
 	clientIdStr := c.Query("clientId")
 	roomIdStr := c.Query("roomId")
-	userIdStr := c.Query("userId")
-	initDataStr := c.Query("initData")
 
-	// Extract user id from telegram init data
-	if len(initDataStr) > 0 {
-		initData, err := w.parseTgInitData(initDataStr)
-		if err != nil {
-			http.Error(c.Writer, err.Error(), http.StatusBadRequest)
-			return
-		}
-		userIdStr = strconv.FormatInt(initData.User.ID, 10)
-	}
-
-	// Check userId
-	if len(userIdStr) == 0 {
-		http.Error(
-			c.Writer,
-			"User id not provided",
-			http.StatusNotFound,
-		)
+	userID, _, err := w.authenticate(c)
+	if err != nil {
+		http.Error(c.Writer, err.Error(), http.StatusUnauthorized)
 		return
 	}
 
-	// Check room id
-	if roomIdStr == "" {
-		http.Error(
-			c.Writer,
-			"Room id not provided",
-			http.StatusBadRequest,
-		)
-		return
-	} else if len(roomIdStr) > 36 {
-		http.Error(
-			c.Writer,
-			"Room id is too long",
-			http.StatusBadRequest,
-		)
+	if !validateRoomId(c, roomIdStr) {
 		return
 	}
 
-	userID := protocol.UserID(userIdStr)
 	clientId := protocol.ClientID(clientIdStr)
 	roomId := protocol.RoomID(roomIdStr)
 	// Check if client allowed
@@ -178,31 +225,31 @@ func (w *Web) createRoomHandler(c *gin.Context) {
 		return
 	}
 
-	// Check if the room is already created
-	roomKey := protocol.RoomKey(tuple.New2(clientId, roomId))
-	_, exists := w.rooms[roomKey]
-	if exists {
-		http.Error(
-			c.Writer,
-			"Room exists",
-			http.StatusBadRequest,
-		)
-		return
-	}
-
 	// Create new record in db
-	err := w.db.AddCustomGameRoom(clientId, roomId, userID)
-	if err != nil {
-		http.Error(
-			c.Writer,
-			err.Error(),
-			http.StatusInternalServerError,
-		)
+	if err := w.db.AddCustomGameRoom(clientId, roomId, userID); err != nil {
+		if errors.Is(err, db.ErrRoomExists) {
+			http.Error(c.Writer, "Room exists", http.StatusBadRequest)
+			return
+		}
+		slog.Error("failed to create custom game room", "error", err, "client_id", clientId, "room_id", roomId)
+		http.Error(c.Writer, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 
 	// Create room and add to map
-	w.rooms[roomKey], _ = NewGameRoom(clientId, roomId, w.db, nil)
+	room, err := NewGameRoom(clientId, roomId, w.db, nil)
+	if err != nil {
+		slog.Error("failed to initialize game room", "error", err, "client_id", clientId, "room_id", roomId)
+		http.Error(c.Writer, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	roomKey := protocol.RoomKey(tuple.New2(clientId, roomId))
+	if !w.addRoom(roomKey, room) {
+		http.Error(c.Writer, "Room exists", http.StatusBadRequest)
+		return
+	}
+
 	c.String(http.StatusOK, "ok")
 }
 
@@ -210,63 +257,29 @@ func (w *Web) createRoomHandler(c *gin.Context) {
 // @Produce	json
 // @Param		clientId	query	string	true	"Client ID"
 // @Param		roomId		query	string	true	"Room ID"
-// @Param		userId		query	string	false	"User ID"
-// @Param		initData	query	string	false	"Telegram init data"
+// @Param		initData	query	string	true	"Telegram init data"
 // @Success	200			"ok"
-// @Failure	400			"User id not provided"
 // @Failure	400			"Room id not provided"
 // @Failure	400			"Room id is too long"
 // @Failure	400			"Room cannot be deleted"
+// @Failure	401			"Telegram init data not provided"
+// @Failure	403			"Room does not belong to the user"
 // @Failure	404			"Room not found"
 // @Router		/api/room/delete [get]
 func (w *Web) deleteRoomHandler(c *gin.Context) {
 	clientIdStr := c.Query("clientId")
 	roomIdStr := c.Query("roomId")
-	userIdStr := c.Query("userId")
-	initDataStr := c.Query("initData")
 
-	// Extract user id from telegram init data
-	if len(initDataStr) > 0 {
-		initData, err := w.parseTgInitData(initDataStr)
-		if err != nil {
-			http.Error(
-				c.Writer,
-				err.Error(),
-				http.StatusBadRequest,
-			)
-			return
-		}
-		userIdStr = strconv.FormatInt(initData.User.ID, 10)
-	}
-
-	// Check userId
-	if len(userIdStr) == 0 {
-		http.Error(
-			c.Writer,
-			"User id not provided",
-			http.StatusNotFound,
-		)
+	userID, _, err := w.authenticate(c)
+	if err != nil {
+		http.Error(c.Writer, err.Error(), http.StatusUnauthorized)
 		return
 	}
 
-	// Check room id
-	if roomIdStr == "" {
-		http.Error(
-			c.Writer,
-			"Room id not provided",
-			http.StatusBadRequest,
-		)
-		return
-	} else if len(roomIdStr) > 36 {
-		http.Error(
-			c.Writer,
-			"Room id is too long",
-			http.StatusBadRequest,
-		)
+	if !validateRoomId(c, roomIdStr) {
 		return
 	}
 
-	userID := protocol.UserID(userIdStr)
 	clientId := protocol.ClientID(clientIdStr)
 	roomId := protocol.RoomID(roomIdStr)
 	// Check room key (predefined rooms cannot be deleted)
@@ -284,19 +297,22 @@ func (w *Web) deleteRoomHandler(c *gin.Context) {
 	}
 
 	// Remove record from db
-	err := w.db.RemoveCustomGameRoom(clientId, roomId, userID)
-	if err != nil {
-		http.Error(
-			c.Writer,
-			err.Error(),
-			http.StatusInternalServerError,
-		)
+	if err := w.db.RemoveCustomGameRoom(clientId, roomId, userID); err != nil {
+		switch {
+		case errors.Is(err, db.ErrRoomNotExist):
+			http.Error(c.Writer, "Room not found", http.StatusNotFound)
+		case errors.Is(err, db.ErrRoomNotOwned):
+			http.Error(c.Writer, "Room does not belong to the user", http.StatusForbidden)
+		default:
+			slog.Error("failed to remove custom game room", "error", err, "client_id", clientId, "room_id", roomId)
+			http.Error(c.Writer, "Internal server error", http.StatusInternalServerError)
+		}
 		return
 	}
 
 	// Close room and delete from map
 	roomKey := protocol.RoomKey(tuple.New2(clientId, roomId))
-	room, exists := w.rooms[roomKey]
+	room, exists := w.removeRoom(roomKey)
 	if !exists {
 		http.Error(
 			c.Writer,
@@ -304,10 +320,8 @@ func (w *Web) deleteRoomHandler(c *gin.Context) {
 			http.StatusNotFound,
 		)
 		return
-	} else {
-		room.closed = true
-		delete(w.rooms, roomKey)
 	}
+	room.Close()
 
 	c.String(http.StatusOK, "ok")
 }
@@ -325,20 +339,7 @@ func (w *Web) statsRoomHandler(c *gin.Context) {
 	clientIdStr := c.Query("clientId")
 	roomIdStr := c.Query("roomId")
 
-	// Check room id
-	if roomIdStr == "" {
-		http.Error(
-			c.Writer,
-			"Room id not provided",
-			http.StatusBadRequest,
-		)
-		return
-	} else if len(roomIdStr) > 36 {
-		http.Error(
-			c.Writer,
-			"Room id is too long",
-			http.StatusBadRequest,
-		)
+	if !validateRoomId(c, roomIdStr) {
 		return
 	}
 
@@ -346,7 +347,7 @@ func (w *Web) statsRoomHandler(c *gin.Context) {
 	clientId := protocol.ClientID(clientIdStr)
 	roomId := protocol.RoomID(roomIdStr)
 	roomKey := protocol.RoomKey(tuple.New2(clientId, roomId))
-	room, exists := w.rooms[roomKey]
+	room, exists := w.getRoom(roomKey)
 	if !exists {
 		http.Error(
 			c.Writer,
@@ -356,12 +357,13 @@ func (w *Web) statsRoomHandler(c *gin.Context) {
 		return
 	}
 
-	// Retrive room stats
+	// Retrieve room stats
 	stats, err := room.Stats(userPayloadCountInStats)
 	if err != nil {
+		slog.Error("failed to get room stats", "error", err, "client_id", clientId, "room_id", roomId)
 		http.Error(
 			c.Writer,
-			fmt.Sprintln("Failed to get room stats:", err),
+			"Failed to get room stats",
 			http.StatusInternalServerError,
 		)
 		return
@@ -400,9 +402,10 @@ func (w *Web) statsHandler(c *gin.Context) {
 	// Get rooms by key
 	customRooms, err := w.db.ListCustomGameRooms()
 	if err != nil {
+		slog.Error("failed to list custom game rooms", "error", err, "client_id", clientId)
 		http.Error(
 			c.Writer,
-			err.Error(),
+			"Internal server error",
 			http.StatusInternalServerError,
 		)
 		return
@@ -410,9 +413,10 @@ func (w *Web) statsHandler(c *gin.Context) {
 
 	onlineUsersCount, err := w.db.GetOnlineUsersCount(clientId)
 	if err != nil {
+		slog.Error("failed to get online users count", "error", err, "client_id", clientId)
 		http.Error(
 			c.Writer,
-			err.Error(),
+			"Internal server error",
 			http.StatusInternalServerError,
 		)
 		return

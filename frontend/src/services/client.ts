@@ -1,4 +1,4 @@
-import { ButtonType, GameState } from "../protocol/enums";
+import { ButtonPhase, ButtonType, GameState } from "../protocol/enums";
 import { ConnectEvent, DisconnectEvent } from "../protocol/internal";
 import {ErrorResponse, GameplayMessage, RecordResponse, RoomStats, UpdateResponse} from "../protocol/respons";
 
@@ -13,6 +13,11 @@ export class NetworkClient {
     private wsEndpoint: string;
     private httpEndpoint: string;
     private clientId: string;
+    private reconnectAttempts: number = 0;
+    private readonly maxReconnectAttempts: number = 3;
+    private readonly reconnectDelay: number = 2000;
+    private lastWsUrl?: URL;
+    private shouldReconnect: boolean = false;
 
     constructor(public config: Config) {
         this.wsEndpoint = config.wsEndpoint;
@@ -40,6 +45,7 @@ export class NetworkClient {
     }
 
     private onWsOpen(_: Event): void {
+        this.reconnectAttempts = 0;
         MessageBus.raise(new ConnectEvent()).catch(console.log);
     }
 
@@ -49,6 +55,27 @@ export class NetworkClient {
 
     private onWsClose(_: CloseEvent): void {
         MessageBus.raise(new DisconnectEvent()).catch(console.log);
+        this.attemptReconnect();
+    }
+
+    private attemptReconnect(): void {
+        if (!this.shouldReconnect || !this.lastWsUrl) {
+            return;
+        }
+        if (this.reconnectAttempts >= this.maxReconnectAttempts) {
+            console.log('Max reconnect attempts reached');
+            this.shouldReconnect = false;
+            this.reconnectAttempts = 0;
+            return;
+        }
+        this.reconnectAttempts++;
+        const delay = this.reconnectDelay * this.reconnectAttempts;
+        console.log(`Reconnecting in ${delay}ms (attempt ${this.reconnectAttempts})`);
+        setTimeout(() => {
+            if (this.shouldReconnect && this.lastWsUrl) {
+                this.ws = this.establishWsConnection(this.lastWsUrl);
+            }
+        }, delay);
     }
 
     private onWsMessage(ev: MessageEvent): void {
@@ -60,10 +87,12 @@ export class NetworkClient {
                 break;
             }
             case GameState.Record: {
+                this.shouldReconnect = false;
                 MessageBus.raise(plainToInstance(RecordResponse, raw as object)).catch(console.log);
                 break;
             }
             case GameState.Error: {
+                this.shouldReconnect = false;
                 MessageBus.raise(plainToInstance(ErrorResponse, raw as object)).catch(console.log);
                 break;
             }
@@ -72,6 +101,9 @@ export class NetworkClient {
 
     private sendMessage(message: GameplayMessageRequest): void {
         try {
+            if (message.buttonPhase === ButtonPhase.Release) {
+                this.shouldReconnect = false;
+            }
             if (this.ws != null && this.ws.readyState === WebSocket.OPEN) {
                 this.ws!.send(JSON.stringify(message));
             }
@@ -93,14 +125,20 @@ export class NetworkClient {
 
     public startGameplay(initData: string, buttonType: ButtonType): void {
         this.closeWsConnection();
+        this.shouldReconnect = true;
+        this.reconnectAttempts = 0;
         var url = new URL(this.wsEndpoint);
         url.searchParams.append('initData', initData);
         url.searchParams.append('roomId', buttonType);
         url.searchParams.append('clientId', this.clientId);
+        this.lastWsUrl = url;
         this.ws = this.establishWsConnection(url);
     }
 
     public stopGameplay(): void {
+        this.shouldReconnect = false;
+        this.reconnectAttempts = 0;
+        this.lastWsUrl = undefined;
         this.closeWsConnection();
     }
 }

@@ -69,6 +69,22 @@ ButtonMania supports multiple languages, including English and Russian. Motivati
 
 ButtonMania is a delightful and straightforward game that operates within Telegram. Users pick a button from three options: love, peace, or fortune. Premium Telegram users can access an additional button called "prestige." The objective is to hold the chosen button for as long as possible. During gameplay, motivational messages may (or may not, since it's ironic) be displayed. The server maintains a leaderboard and records game sessions. However, only the best results are stored, and users can view their own rankings.
 
+## Testing
+
+Unit tests run without any dependencies:
+
+```sh
+make test
+```
+
+Integration tests run against real Redis and Postgres instances, started from `docker-compose.test.yml`:
+
+```sh
+make test-integration
+```
+
+They cover the database layer and the HTTP/WebSocket API, including init data validation, custom room ownership and a full gameplay session. Both suites, plus `go vet`, run with `make test-all`. 🧪
+
 ## Frontend CLI Commands
 
 For the frontend, you can use the following CLI commands:

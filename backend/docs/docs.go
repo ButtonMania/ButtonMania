@@ -41,15 +41,10 @@ const docTemplate = `{
                     },
                     {
                         "type": "string",
-                        "description": "User ID",
-                        "name": "userId",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
                         "description": "Telegram init data",
                         "name": "initData",
-                        "in": "query"
+                        "in": "query",
+                        "required": true
                     }
                 ],
                 "responses": {
@@ -58,6 +53,9 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Room exists"
+                    },
+                    "401": {
+                        "description": "Telegram init data not provided"
                     }
                 }
             }
@@ -85,15 +83,10 @@ const docTemplate = `{
                     },
                     {
                         "type": "string",
-                        "description": "User ID",
-                        "name": "userId",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
                         "description": "Telegram init data",
                         "name": "initData",
-                        "in": "query"
+                        "in": "query",
+                        "required": true
                     }
                 ],
                 "responses": {
@@ -102,6 +95,12 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Room cannot be deleted"
+                    },
+                    "401": {
+                        "description": "Telegram init data not provided"
+                    },
+                    "403": {
+                        "description": "Room does not belong to the user"
                     },
                     "404": {
                         "description": "Room not found"
@@ -147,6 +146,34 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/stats": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "summary": "Get client stats",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Client ID",
+                        "name": "clientId",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/protocol.ClientStats"
+                        }
+                    },
+                    "404": {
+                        "description": "Client not found"
+                    }
+                }
+            }
+        },
         "/ws": {
             "get": {
                 "summary": "Handles WebSocket connections",
@@ -167,18 +194,6 @@ const docTemplate = `{
                     },
                     {
                         "type": "string",
-                        "description": "User ID",
-                        "name": "userId",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "description": "User locale",
-                        "name": "locale",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
                         "description": "User payload",
                         "name": "payload",
                         "in": "query"
@@ -187,7 +202,8 @@ const docTemplate = `{
                         "type": "string",
                         "description": "Telegram init data",
                         "name": "initData",
-                        "in": "query"
+                        "in": "query",
+                        "required": true
                     }
                 ],
                 "responses": {}
@@ -195,6 +211,17 @@ const docTemplate = `{
         }
     },
     "definitions": {
+        "protocol.ClientStats": {
+            "type": "object",
+            "properties": {
+                "roomsCount": {
+                    "type": "integer"
+                },
+                "usersOnline": {
+                    "type": "integer"
+                }
+            }
+        },
         "protocol.GameRoomStats": {
             "type": "object",
             "properties": {
