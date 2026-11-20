@@ -1,20 +1,7 @@
+# TLS and routing are handled by the host's shared edge proxy (Traefik on the
+# external `edge` network, deployed from its own repository). This stack only
+# declares its routes via labels and must not publish 80/443 itself.
 services:
-  caddy:
-    image: caddy:2-alpine
-    restart: unless-stopped
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile:ro
-      - caddy-data:/data
-      - caddy-config:/config
-    networks:
-      - buttonmania
-    depends_on:
-      - server
-    mem_limit: 64m
-
   server:
     image: ghcr.io/buttonmania/buttonmania:latest
     restart: unless-stopped
@@ -28,9 +15,25 @@ services:
       - "--redispassword=${REDIS_PASSWORD:?REDIS_PASSWORD is required}"
       - "--redisdatabase=0"
     ports:
+      # Loopback only: used by the deploy health check.
       - "127.0.0.1:8888:8888"
     networks:
       - buttonmania
+      - edge
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=edge
+      - traefik.http.services.buttonmania.loadbalancer.server.port=8888
+      - traefik.http.routers.buttonmania.rule=Host(`buttonmania.win`) || Host(`buttonmania.top`)
+      - traefik.http.routers.buttonmania.entrypoints=websecure
+      - traefik.http.routers.buttonmania.middlewares=buttonmania-compress
+      - traefik.http.middlewares.buttonmania-compress.compress=true
+      - traefik.http.routers.buttonmania-www.rule=Host(`www.buttonmania.win`) || Host(`www.buttonmania.top`)
+      - traefik.http.routers.buttonmania-www.entrypoints=websecure
+      - traefik.http.routers.buttonmania-www.middlewares=buttonmania-www-to-apex
+      - traefik.http.middlewares.buttonmania-www-to-apex.redirectregex.regex=^https://www\.([^/]+)(.*)
+      - traefik.http.middlewares.buttonmania-www-to-apex.redirectregex.replacement=https://$${1}$${2}
+      - traefik.http.middlewares.buttonmania-www-to-apex.redirectregex.permanent=true
     depends_on:
       postgres:
         condition: service_healthy
@@ -95,9 +98,9 @@ networks:
     driver: bridge
     driver_opts:
       com.docker.network.driver.mtu: "1450"
+  edge:
+    external: true
 
 volumes:
-  caddy-data:
-  caddy-config:
   postgres-data:
   redis-data:
