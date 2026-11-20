@@ -24,11 +24,11 @@ services:
       - traefik.enable=true
       - traefik.docker.network=edge
       - traefik.http.services.buttonmania.loadbalancer.server.port=8888
-      - traefik.http.routers.buttonmania.rule=Host(`buttonmania.win`) || Host(`buttonmania.top`)
+      - traefik.http.routers.buttonmania.rule=Host(`buttonmania.win`) || Host(`buttonmania.top`) || Host(`maniagames.net`)
       - traefik.http.routers.buttonmania.entrypoints=websecure
       - traefik.http.routers.buttonmania.middlewares=buttonmania-compress
       - traefik.http.middlewares.buttonmania-compress.compress=true
-      - traefik.http.routers.buttonmania-www.rule=Host(`www.buttonmania.win`) || Host(`www.buttonmania.top`)
+      - traefik.http.routers.buttonmania-www.rule=Host(`www.buttonmania.win`) || Host(`www.buttonmania.top`) || Host(`www.maniagames.net`)
       - traefik.http.routers.buttonmania-www.entrypoints=websecure
       - traefik.http.routers.buttonmania-www.middlewares=buttonmania-www-to-apex
       - traefik.http.middlewares.buttonmania-www-to-apex.redirectregex.regex=^https://www\.([^/]+)(.*)
