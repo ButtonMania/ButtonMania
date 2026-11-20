@@ -141,3 +141,80 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+
+  deploy:
+    needs: [build-and-push]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Configure SSH
+        env:
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
+
+      - name: Deploy to VPS
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          GIN_MODE: release
+          CORS_ORIGINS: ${{ secrets.CORS_ORIGINS }}
+          SESSION_SECRET: ${{ secrets.SESSION_SECRET }}
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+          REDIS_PASSWORD: ${{ secrets.REDIS_PASSWORD }}
+          TG_BOT_TOKEN: ${{ secrets.TG_BOT_TOKEN }}
+          TG_APP_URL: ${{ secrets.TG_APP_URL }}
+          TG_WEBHOOK_URL: ${{ secrets.TG_WEBHOOK_URL }}
+          TG_DONATION_TON: ${{ secrets.TG_DONATION_TON }}
+          TG_DONATION_ETH: ${{ secrets.TG_DONATION_ETH }}
+          TG_DONATION_XMR: ${{ secrets.TG_DONATION_XMR }}
+        run: |
+          scp -i ~/.ssh/id_ed25519 \
+            deploy/docker-compose.prod.yml \
+            deploy/Caddyfile \
+            "${DEPLOY_USER}@${DEPLOY_HOST}:/opt/buttonmania/"
+
+          env_payload=$(cat <<EOF
+          GIN_MODE=${GIN_MODE}
+          CORS_ORIGINS=${CORS_ORIGINS}
+          SESSION_SECRET=${SESSION_SECRET}
+          POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+          REDIS_PASSWORD=${REDIS_PASSWORD}
+          TG_BOT_TOKEN=${TG_BOT_TOKEN}
+          TG_APP_URL=${TG_APP_URL}
+          TG_WEBHOOK_URL=${TG_WEBHOOK_URL}
+          TG_DONATION_TON=${TG_DONATION_TON}
+          TG_DONATION_ETH=${TG_DONATION_ETH}
+          TG_DONATION_XMR=${TG_DONATION_XMR}
+          EOF
+          )
+
+          printf '%s\n' "$env_payload" | ssh -i ~/.ssh/id_ed25519 "${DEPLOY_USER}@${DEPLOY_HOST}" \
+            'umask 077 && cat > /opt/buttonmania/.env'
+
+          ssh -i ~/.ssh/id_ed25519 "${DEPLOY_USER}@${DEPLOY_HOST}" 'bash -s' <<'REMOTE'
+            set -euo pipefail
+            cd /opt/buttonmania
+            docker compose -f docker-compose.prod.yml pull
+            docker compose -f docker-compose.prod.yml up -d --remove-orphans
+            docker image prune -f >/dev/null 2>&1 || true
+            for i in $(seq 1 30); do
+              if curl -fsS http://127.0.0.1:8888/health >/dev/null 2>&1; then
+                echo "Health check passed"
+                exit 0
+              fi
+              sleep 1
+            done
+            echo "Health check failed" >&2
+            docker compose -f docker-compose.prod.yml logs --tail=50 server
+            exit 1
+          REMOTE

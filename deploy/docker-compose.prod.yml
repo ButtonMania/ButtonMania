@@ -27,6 +27,8 @@ services:
       - "--redisaddress=redis:6379"
       - "--redispassword=${REDIS_PASSWORD:?REDIS_PASSWORD is required}"
       - "--redisdatabase=0"
+    ports:
+      - "127.0.0.1:8888:8888"
     networks:
       - buttonmania
     depends_on:
