@@ -2,3 +2,11 @@ buttonmania.win, buttonmania.top {
 	encode gzip
 	reverse_proxy server:8888
 }
+
+www.buttonmania.win {
+	redir https://buttonmania.win{uri} permanent
+}
+
+www.buttonmania.top {
+	redir https://buttonmania.top{uri} permanent
+}

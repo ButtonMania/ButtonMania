@@ -124,8 +124,8 @@ export default class App extends Component<Props, State> {
 
   componentDidMount(): void {
     // We are ready to launch app
-    this.props.webApp.ready();
-    this.props.webApp.expand();
+    this.props.webApp?.ready?.();
+    this.props.webApp?.expand?.();
   }
 
   adjustBaseFontSize(platform: Platforms): void {
@@ -260,7 +260,7 @@ export default class App extends Component<Props, State> {
       bestOverallDurationValue: stats.bestOverallDuration,
       bestTodaysDurationValue: stats.bestTodaysDuration,
     });
-    this.props.webApp.HapticFeedback.impactOccurred("soft");
+    this.props.webApp?.HapticFeedback?.impactOccurred("soft");
   }
 
   onRecieveUpdate(respons: UpdateResponse): void {
@@ -276,7 +276,7 @@ export default class App extends Component<Props, State> {
       countActiveValue: respons.countActive,
     });
     if (respons.message != null) {
-      this.props.webApp.HapticFeedback.notificationOccurred("success");
+      this.props.webApp?.HapticFeedback?.notificationOccurred("success");
     }
   }
 
@@ -296,17 +296,17 @@ export default class App extends Component<Props, State> {
       ),
     });
     if (respons.worldRecord) {
-      this.props.webApp.HapticFeedback.impactOccurred("heavy");
+      this.props.webApp?.HapticFeedback?.impactOccurred("heavy");
     } else {
-      this.props.webApp.HapticFeedback.notificationOccurred("success");
+      this.props.webApp?.HapticFeedback?.notificationOccurred("success");
     }
   }
 
   onRecieveError(respons: ErrorResponse): void {
-    this.props.webApp.showPopup({
+    this.props.webApp?.showPopup?.({
       message: `Oops! An error has occurred: ${respons.error.message}`,
     });
-    this.props.webApp.HapticFeedback.notificationOccurred("error");
+    this.props.webApp?.HapticFeedback?.notificationOccurred("error");
   }
 
   onStartGameplay(): void {
@@ -317,7 +317,7 @@ export default class App extends Component<Props, State> {
   }
 
   onStopGameplay(): void {
-    this.props.webApp.HapticFeedback.impactOccurred("rigid");
+    this.props.webApp?.HapticFeedback?.impactOccurred("rigid");
   }
 
   render(props: Props, state: State): ComponentChild {

@@ -19,13 +19,28 @@ export default function Root() {
     const api_host_el: Element = document.querySelector('[name="api_host"]');
     const api_host: string = api_host_el?.getAttribute('content') || window.location.host;
 
+    const fallbackWebApp = {
+        initData: "",
+        initDataUnsafe: {},
+        platform: "unknown",
+        ready: () => undefined,
+        expand: () => undefined,
+        showPopup: (params: { message: string }) => window.alert(params.message),
+        HapticFeedback: {
+            impactOccurred: () => undefined,
+            notificationOccurred: () => undefined,
+        },
+    } as unknown as Telegram["WebApp"];
+
+    const webApp = window.Telegram?.WebApp ?? fallbackWebApp;
+
     return (
         <App
             apiHost={api_host}
             clientId={client_id}
             debug={debug}
             launchParams={launch_params}
-            webApp={window.Telegram.WebApp}
+            webApp={webApp}
         />
     );
 }

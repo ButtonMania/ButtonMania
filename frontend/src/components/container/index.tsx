@@ -16,6 +16,10 @@ export default class Container extends Component<Props, State> {
     static contextType = AppContext;
 
     componentDidMount() {
+        if (document.readyState === 'complete') {
+            this.setState({ fullyLoaded: false }, () => this.loadHandler());
+            return;
+        }
         let loadHandler = this.loadHandler.bind(this);
         window.addEventListener('load', loadHandler);
         this.setState({
@@ -25,10 +29,12 @@ export default class Container extends Component<Props, State> {
     }
 
     componentWillUnmount() {
-        window.removeEventListener('load', this.state.loadHandler);
+        if (this.state.loadHandler) {
+            window.removeEventListener('load', this.state.loadHandler);
+        }
     }
 
-    loadHandler(e: Event): void {
+    loadHandler(_e?: Event): void {
         // Change state after little delay
         const fullyLoadedTimeout: number = 500;
         let fullyLoadedTimeoutId: any = window.setTimeout(() => {
