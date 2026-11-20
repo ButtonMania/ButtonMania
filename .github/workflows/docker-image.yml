@@ -179,7 +179,6 @@ jobs:
         run: |
           scp -i ~/.ssh/id_ed25519 \
             deploy/docker-compose.prod.yml \
-            deploy/Caddyfile \
             "${DEPLOY_USER}@${DEPLOY_HOST}:/opt/buttonmania/"
 
           env_payload=$(cat <<EOF
@@ -204,8 +203,8 @@ jobs:
             set -euo pipefail
             cd /opt/buttonmania
             docker compose -f docker-compose.prod.yml pull
+            rm -f Caddyfile
             docker compose -f docker-compose.prod.yml up -d --remove-orphans
-            docker compose -f docker-compose.prod.yml exec -T caddy caddy reload --config /etc/caddy/Caddyfile || docker compose -f docker-compose.prod.yml restart caddy
             docker image prune -f >/dev/null 2>&1 || true
             for i in $(seq 1 30); do
               if curl -fsS http://127.0.0.1:8888/health >/dev/null 2>&1; then
