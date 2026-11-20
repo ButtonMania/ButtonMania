@@ -1,6 +1,6 @@
 # ==============================================================================
 
-FROM node:alpine3.16 AS frontend_builder
+FROM --platform=$BUILDPLATFORM node:alpine3.16 AS frontend_builder
 
 WORKDIR /frontend
 COPY ./frontend/package.json /frontend/package.json
@@ -16,7 +16,7 @@ RUN npm run build
 
 # ==============================================================================
 
-FROM golang:1.26-alpine AS backend_builder
+FROM --platform=$BUILDPLATFORM golang:1.26-alpine AS backend_builder
 ARG TARGETOS=linux
 ARG TARGETARCH=amd64
 WORKDIR /backend
